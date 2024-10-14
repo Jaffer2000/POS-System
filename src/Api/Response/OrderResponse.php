@@ -1,0 +1,61 @@
+<?php
+
+namespace Thirtybees\Module\POS\Api\Response;
+
+use Cart;
+use PrestaShopException;
+use Thirtybees\Module\POS\DependencyInjection\Factory;
+use Tools;
+
+/**
+ *
+ */
+class OrderResponse implements Response
+{
+    /**
+     * @var Cart
+     */
+    private Cart $cart;
+
+    /**
+     * @param Cart $cart
+     */
+    public function __construct(Cart $cart)
+    {
+        $this->cart = $cart;
+    }
+
+    /**
+     * @param Factory $factory
+     *
+     * @return array
+     *
+     * @throws PrestaShopException
+     */
+    public function getResponse(Factory $factory): array
+    {
+        $subtotal = Tools::roundPrice($this->cart->getOrderTotal(true, Cart::ONLY_PRODUCTS_WITHOUT_SHIPPING));
+        $total = Tools::roundPrice($this->cart->getOrderTotal(true));
+        $totalVatExcl = Tools::roundPrice($this->cart->getOrderTotal(false));
+        $discount = (float)$this->cart->getOrderTotal(true, Cart::ONLY_DISCOUNTS);
+        $lines = [];
+        $discounts = [];
+        foreach ($this->cart->getProducts() as $product) {
+            $lines[] = [
+                'product_id' => $product['id_product'],
+                'name' => $product['name'],
+                'item_price' => (float)$product['price'],
+                'quantity' => (int)$product['quantity'],
+            ];
+        }
+        return [
+            'subtotal' => $subtotal,
+            'total' => $total,
+            'discount' => $discount,
+            'vat' => Tools::roundPrice($total - $totalVatExcl),
+            'lines' => $lines,
+            'discounts' => $discounts
+        ];
+    }
+
+}

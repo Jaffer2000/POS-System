@@ -1,0 +1,51 @@
+<?php
+/**
+ * Copyright (C) 2022-2022 thirty bees <contact@thirtybees.com>
+ *
+ * NOTICE OF LICENSE
+ *
+ * Licensed under the Thirty Bees Regular License version 1.0
+ * For more information see LICENSE.txt file
+ *
+ * @author    thirty bees <contact@thirtybees.com>
+ * @copyright 2022-2022 Petr Hucik
+ * @license   Licensed under the Thirty Bees Regular License version 1.0
+ */
+
+namespace Thirtybees\Module\POS\Auth\Service;
+
+
+use Thirtybees\Module\POS\Auth\Model\Token;
+use Thirtybees\Module\POS\Auth\Model\User;
+use Thirtybees\Module\POS\Exception\AccessDeniedException;
+use Thirtybees\Module\POS\Exception\UnauthorizedException;
+
+interface AuthService
+{
+    /**
+     * @param string $username
+     * @param string $password
+     * @param string $role
+     *
+     * @return User
+     *
+     * @throws AccessDeniedException
+     * @throws UnauthorizedException
+     */
+    public function login(string $username, string $password, string $role): User;
+
+    /**
+     * @param Token $token
+     * @return Token
+     */
+    public function exchangeToken(Token $token): Token;
+
+    /**
+     * @param Token $token
+     *
+     * @return User
+     *
+     * @throws AccessDeniedException
+     */
+    public function tokenIntrospection(Token $token): User;
+}

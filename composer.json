@@ -1,0 +1,19 @@
+{
+    "name": "thirtybees/tbpos",
+    "description": "POS",
+    "type": "project",
+    "require-dev": {
+    },
+    "license": "proprietary",
+    "authors": [
+        {
+            "name": "Petr Hučík",
+            "email": "petr@thirtybees.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Thirtybees\\Module\\POS\\": "src/"
+        }
+    }
+}

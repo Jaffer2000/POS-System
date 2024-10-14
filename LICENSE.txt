@@ -1,0 +1,61 @@
+Thirty Bees Regular License version 1.0
+
+LICENSE AGREEMENT
+
+1.  This Thirty Bees Regular License (the "License") applies to any original work of
+    authorship (the "Original Work") whose owner (the "Licensor") has
+    placed the following licensing notice adjacent to the copyright notice
+    for the Original Work:
+
+    "Licensed under the Thirty Bees Regular License version 1.0"
+
+2.  This License grants you, the purchaser, an ongoing, non-exclusive, worldwide license
+    to make use of the digital work (Item) you have purchased. Read the rest of this
+    license for the details that apply to your use of the Item
+
+3.  You are licensed to use the Item to create one single End Product for yourself
+    or for one client. You can transfer this single End Product to your client for any fee.
+    This license is then transferred to your client.
+
+4.  An End Product is a work that incorporates the Item as well as other things,
+    so that it is larger in scope and different in nature than the Item.
+
+5.  Users may modify the Code in any way, however any modification voids warranty.
+    The resulting works are subject to the terms of this license. Author reserves the rights
+    not to provide support to modified code.
+
+6.  You can’t Sell the End Product, except to one client. (If you or your client
+    want to Sell the End Product, you will need the Extended License.)
+
+7.  You may NOT redistribute or repost/resell for download any part of this
+    software without expressed written consent from the Author.  Redistribution is
+    defined as re-offering our scripts for download in any fashion, whether on a web site,
+    an application that generates code snippets, a CD-ROM collection of PHP codes etc.
+
+8.  You must not permit an end user of the End Product to extract the Item and
+    use it separately from the End Product.
+
+9.  Users agree not to use this software for illegal purposes, or on sites containing
+    illegal material.
+
+10. Users agree not to remove/edit the credit notice within the source code,
+    or claim the code to be work of their own.
+
+11. Users agree not to hold Author liable for any damages resulted from proper or improper
+    use of any of this software. Use at your own risk.
+
+12. USERS MUST NOT REMOVE OR HIDE OR MODIFY the the license agreement or copyright notice
+
+13. You understand that breach of this License will result in immediate cancellation of
+    your license(s), and no refunds will be given. If that happens, you must stop making
+    copies of or distributing the End Product until you remove the Item from it.
+
+14. The author of the Item retains ownership of the Item but grants you the license on these terms.
+
+
+NO WARRANTY:
+THERE IS NO WARRANTY FOR THE SOFTWARE. THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF
+ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT SHALL THE AUTHORS/COPYRIGHT
+HOLDERS BE LIABLE TO ANY PARTY FOR ANY KIND OF DAMAGE IN ANY FORM ARISING IN ANY WAY OUT OF
+THE USE OR MISUSE OF THIS SOFTWARE.
