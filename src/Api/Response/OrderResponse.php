@@ -49,6 +49,15 @@ class OrderResponse implements Response
                 'quantity' => (int)$product['quantity'],
             ];
         }
+        foreach ($this->cart->getCartRules() as $rule) {
+            $discounts[] = [
+                'id' => (int)$rule['id_cart_rule'],
+                'name' => $rule['name'],
+                'type' => (float)$rule['reduction_percent'] > 0 ? 'percentage' : 'amount',
+                'value' => (float)$rule['reduction_percent'] > 0 ? (float)$rule['reduction_percent'] : (float)$rule['reduction_amount'],
+                'editable' => true
+            ];
+        }
         return [
             'subtotal' => $subtotal,
             'total' => $total,

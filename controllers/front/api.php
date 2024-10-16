@@ -36,6 +36,9 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
     const METHOD_GET = 'GET';
     const METHOD_OPTIONS = 'OPTIONS';
 
+    const DISCOUNT_PERCENTAGE = 'percentage';
+    const DISCOUNT_AMOUNT = 'amount';
+
     /**
      * @var TbPOS
      */
@@ -46,6 +49,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
 
     /**
      * @return void
+     * @throws PrestaShopException
      */
     public function init()
     {
@@ -56,6 +60,8 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         if ($method === static::METHOD_OPTIONS) {
             exit;
         }
+
+        $this->initContext();
 
         ServiceLocator::getInstance()->getErrorHandler()->setErrorResponseHandler(new JSendErrorResponse(_PS_MODE_DEV_));
 
@@ -116,10 +122,6 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      */
     protected function dispatch(Factory $factory, string $url): Response
     {
-        $context = Context::getContext();
-        if (! $context->cart) {
-            $context->cart = new Cart();
-        }
         $url = trim($url, '/');
         if ($url === 'products') {
             $this->ensureMethod(static::METHOD_GET);
@@ -181,6 +183,18 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
                 $factory,
                 $this->getCart($this->getToken()),
                 (string)$this->getParameter('refcode', $body)
+            );
+        }
+
+        if ($url === 'orders/apply-discount') {
+            $this->ensureMethod(static::METHOD_POST);
+            $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
+            $body = $this->getBody();
+            return $this->processApplyDiscount(
+                $factory,
+                $this->getCart($this->getToken()),
+                $this->toDiscountType((string)$this->getParameter('discount_type', $body), 'discount_type'),
+                Tools::parseNumber($this->getParameter('value', $body))
             );
         }
 
@@ -454,6 +468,117 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
     {
         $user = $factory->authService()->tokenIntrospection($token);
         return new UserResponse($user);
+    }
+
+    /**
+     * @param Factory $factory
+     * @param Cart $cart
+     * @param string $discountType
+     * @param float $value
+     *
+     * @return void
+     *
+     * @throws PrestaShopException
+     * @throws NotFoundException
+     * @throws AccessDeniedException
+     */
+    private function processApplyDiscount(Factory $factory, Cart $cart, string $discountType, float $value): OrderResponse
+    {
+        $cartId = (int)$cart->id;
+        $orderLevelPrefix = "POS_{$cartId}_";
+        $cartRule = $this->findOrderDiscountCartRule($cart->getCartRules(), $orderLevelPrefix);
+        if (! $cartRule) {
+            $cartRule = new CartRule();
+            $cartRule->code = $orderLevelPrefix . strtoupper(Tools::passwdGen(24));
+        } else {
+            $cart->removeCartRule((int)$cartRule->id);
+        }
+
+        $employee = $this->getToken()->getEmployee();
+        $employeeID = (int)$employee->id;
+
+        $languageIds = Language::getIDs(false);
+        $cartRule->name = [];
+        foreach ($languageIds as $idLang) {
+            $cartRule->name[$idLang] = "POS: order level discount";
+        }
+
+        $cartRule->description = "Discount applied by ".$employee->firstname . ' ' . $employee->lastname." [$employeeID] for cart $cartId";
+        $cartRule->quantity = 1;
+        $cartRule->highlight = 0;
+        $cartRule->active = 1;
+        $cartRule->quantity_per_user = 1;
+        $cartRule->date_from = date('Y-m-d 00:00:00');
+        $cartRule->date_to = date('Y-m-d 23:59:59', strtotime('+1 days'));
+        $cartRule->partial_use = false;
+        if ($discountType === static::DISCOUNT_PERCENTAGE) {
+            $cartRule->reduction_percent = max(0, min(100, $value));
+            $cartRule->reduction_amount = 0;
+        } else {
+            $cartRule->reduction_percent = 0;
+            $cartRule->reduction_amount = abs($value);
+            $cartRule->reduction_currency = $cart->id_currency;
+            $cartRule->reduction_tax = true;
+        }
+        if (! $cart->id) {
+            $cart->save();
+        }
+        $cartRule->save();
+        $cart->addCartRule((int)$cartRule->id);
+        return new OrderResponse($cart);
+    }
+
+    /**
+     * @param array $cartRules
+     * @param string $orderCartRulePrefix
+     * @return CartRule|null
+     */
+    private function findOrderDiscountCartRule(array $cartRules, string $orderCartRulePrefix): ?CartRule
+    {
+        foreach ($cartRules as $row) {
+            /** @var CartRule $cartRule */
+            $cartRule = $row['obj'];
+            // TODO: check id_customer
+            if (strpos($cartRule->code, $orderCartRulePrefix) === 0) {
+                return $cartRule;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param string $param
+     * @param string $paramName
+     *
+     * @return string
+     *
+     * @throws InvalidRequestException
+     */
+    private function toDiscountType(string $param, string $paramName): string
+    {
+        switch (strtolower($param)) {
+            case static::DISCOUNT_PERCENTAGE:
+                return static::DISCOUNT_PERCENTAGE;
+            case static::DISCOUNT_AMOUNT:
+                return static::DISCOUNT_AMOUNT;
+        }
+        throw new InvalidRequestException("Invalid value for parameter '$paramName'");
+    }
+
+    /**
+     * @return void
+     *
+     * @throws PrestaShopException
+     */
+    private function initContext()
+    {
+        $context = Context::getContext();
+        if (! $context->cart) {
+            $context->cart = new Cart();
+        }
+        if (! $context->currency) {
+            $context->currency = Currency::getCurrencyInstance(Configuration::get('PS_CURRENCY_DEFAULT'));
+        }
     }
 
 }
