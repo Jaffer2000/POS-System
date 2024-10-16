@@ -100,10 +100,6 @@ class Token
             return false;
         }
 
-        if (!preg_match("/^[a-zA-Z0-9]{32}$/", $tokenValue)) {
-            return false;
-        }
-
         return static::getFromValue($tokenValue);
     }
 

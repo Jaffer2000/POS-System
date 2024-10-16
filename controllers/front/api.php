@@ -151,6 +151,12 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             );
         }
 
+        if ($url === 'orders/current'){
+            $this->ensureMethod(static::METHOD_GET);
+            $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
+            return $this->processOrderIntrospection($this->getCart($this->getToken()));
+        }
+
         if ($url === 'orders/add-product-to-order') {
             $this->ensureMethod(static::METHOD_POST);
             $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
@@ -372,7 +378,8 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
     private function processAddProductToOrder(Factory $factory, Cart $cart, string $refcode, int $quantity): OrderResponse
     {
         $product = $factory->getSKUService()->getByReference($refcode);
-        $cart->updateQty($quantity, $product->productId, $product->combinationId, 0, 'up');
+        $operator = $quantity > 0 ? 'up' : 'down';
+        $cart->updateQty(abs($quantity), $product->productId, $product->combinationId, 0, $operator);
         return new OrderResponse($cart);
     }
 
@@ -397,6 +404,16 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         if ($quantity > 0) {
             $cart->updateQty($quantity, $sku->productId, $sku->combinationId, 0, 'down');
         }
+        return new OrderResponse($cart);
+    }
+
+    /**
+     * @param Cart $cart
+     *
+     * @return OrderResponse
+     */
+    private function processOrderIntrospection(Cart $cart): OrderResponse
+    {
         return new OrderResponse($cart);
     }
 

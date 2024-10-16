@@ -42,7 +42,8 @@ class OrderResponse implements Response
         $discounts = [];
         foreach ($this->cart->getProducts() as $product) {
             $lines[] = [
-                'product_id' => $product['id_product'],
+                'product_id' => (int)$product['id_product'] . '/' . (int)$product['id_product_attribute'],
+                'reference' => $product['reference'],
                 'name' => $product['name'],
                 'item_price' => (float)$product['price'],
                 'quantity' => (int)$product['quantity'],
