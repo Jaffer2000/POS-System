@@ -116,6 +116,10 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      */
     protected function dispatch(Factory $factory, string $url): Response
     {
+        $context = Context::getContext();
+        if (! $context->cart) {
+            $context->cart = new Cart();
+        }
         $url = trim($url, '/');
         if ($url === 'products') {
             $this->ensureMethod(static::METHOD_GET);

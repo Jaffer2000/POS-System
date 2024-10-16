@@ -22,10 +22,12 @@ use ImageType;
 use Module;
 use PrestaShopDatabaseException;
 use PrestaShopException;
+use Product;
 use Product as CoreProduct;
 use Shop;
 use Thirtybees\Module\POS\Exception\NotFoundException;
 use Thirtybees\Module\POS\Sku\Model\Sku;
+use Tools;
 
 class SkuServiceImpl implements SkuService
 {
@@ -394,11 +396,14 @@ class SkuServiceImpl implements SkuService
     /**
      * @param int $productId
      * @param int $combinationId
+     *
      * @return float
+     *
+     * @throws PrestaShopException
      */
-    private function getProductPrice(int $productId, int $combinationId)
+    private function getProductPrice(int $productId, int $combinationId): float
     {
-        return 100;
+        return Tools::roundPrice(Product::getPriceStatic($productId, $combinationId));
     }
 
 }
