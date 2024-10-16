@@ -52,18 +52,12 @@ class Sku
     public $imageUrl;
 
     /**
-     * @var float
-     */
-    public $price;
-
-    /**
      * @param int $productId
      * @param string $productName
      * @param int $combinationId
      * @param string $combinationName
      * @param string $reference
      * @param string $imageUrl
-     * @param float $price
      */
     public function __construct(
         int $productId,
@@ -71,8 +65,7 @@ class Sku
         int $combinationId,
         string $combinationName,
         string $reference,
-        string $imageUrl,
-        float $price
+        string $imageUrl
     ) {
         $this->productId = $productId;
         $this->productName = $productName;
@@ -80,7 +73,6 @@ class Sku
         $this->combinationName = $combinationName;
         $this->reference = $reference;
         $this->imageUrl = $imageUrl;
-        $this->price = $price;
     }
 
     /**

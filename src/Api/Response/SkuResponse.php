@@ -2,6 +2,8 @@
 
 namespace Thirtybees\Module\POS\Api\Response;
 
+use PrestaShopException;
+use Product;
 use Thirtybees\Module\POS\DependencyInjection\Factory;
 use Thirtybees\Module\POS\Sku\Model\Sku;;
 
@@ -27,6 +29,7 @@ class SkuResponse implements Response
      * @param Factory $factory
      *
      * @return array
+     * @throws PrestaShopException
      */
     public function getResponse(Factory $factory): array
     {
@@ -35,7 +38,8 @@ class SkuResponse implements Response
             'refcode' => $this->sku->reference,
             'barcode' => $this->sku->barcode,
             'product_id' => $this->sku->getSkuId(),
-            'price' => $this->sku->price,
+            'price_tax_excl' => Product::getPriceStatic($this->sku->productId, false, $this->sku->combinationId),
+            'price_tax_incl' => Product::getPriceStatic($this->sku->productId, true, $this->sku->combinationId),
             'image_url' => $this->sku->imageUrl,
         ];
     }

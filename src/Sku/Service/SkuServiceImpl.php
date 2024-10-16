@@ -133,7 +133,6 @@ class SkuServiceImpl implements SkuService
             '',
             $row['reference'],
             $this->getProductImageUrl($productId, $combinationId, 'home', $row['link_rewrite']),
-            $this->getProductPrice($productId, $combinationId),
         );
     }
 
@@ -171,7 +170,6 @@ class SkuServiceImpl implements SkuService
             $row['combination_name'] ?? '',
             $row['reference'],
             $this->getProductImageUrl($productId, $combinationId, 'home', $row['link_rewrite']),
-            $this->getProductPrice($productId, $combinationId),
         );
     }
 
@@ -206,7 +204,6 @@ class SkuServiceImpl implements SkuService
             '',
             $row['reference'],
             $this->getProductImageUrl($productId, $combinationId, 'home', $row['link_rewrite']),
-            $this->getProductPrice($productId, $combinationId)
         );
     }
 
@@ -244,7 +241,6 @@ class SkuServiceImpl implements SkuService
             $row['combination_name'] ?? '',
             $row['reference'],
             $this->getProductImageUrl($productId, $combinationId, 'home', $row['link_rewrite']),
-            $this->getProductPrice($productId, $combinationId),
         );
     }
 
@@ -388,7 +384,6 @@ class SkuServiceImpl implements SkuService
                 '',
                 $row['reference'],
                 $this->getProductImageUrl($productId, $combinationId, 'home', $row['link_rewrite']),
-                $this->getProductPrice($productId, $combinationId),
             );
         }, $res);
     }
