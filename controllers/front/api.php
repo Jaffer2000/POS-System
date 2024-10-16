@@ -262,13 +262,15 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
     {
         $context = Context::getContext();
         $cartId = $token->getCartId();
+        $carrier = Carrier::getCarrierByReference((int)Configuration::get("TBPOS_CARRIER"));
+        $carrierId = $carrier ? (int)$carrier->id : 0;
+
         if (! $cartId) {
             // TODO: extract
             $cart = new Cart();
             $cart->id_currency = (int)Configuration::get('PS_CURRENCY_DEFAULT');
             $cart->id_customer = 0;
-            $cart->id_carrier = (int)Configuration::get('PS_CARRIER_DEFAULT');
-
+            $cart->id_carrier = $carrierId;
             $cart->save();
             $token->updateCartId($cart->id);
             $context->cart = $cart;
@@ -276,7 +278,14 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             if ((int)$context->cart->id !== $cartId) {
                 $context->cart = new Cart($cartId);
             }
+
         }
+
+        if ((int)$context->cart->id_carrier !== $carrierId) {
+            $context->cart->id_carrier = $carrierId;
+            $context->cart->save();
+        }
+
         return $context->cart;
     }
 

@@ -210,5 +210,77 @@ class TbPOS extends Module
         return "'" . implode("', '", $values) . "'";
     }
 
+    /**
+     * @throws PrestaShopException
+     * @throws PrestaShopDatabaseException
+     * @throws SmartyException
+     */
+    public function getContent()
+    {
+        if (Tools::isSubmit('submitSave')) {
+            Configuration::updateGlobalValue('TBPOS_CARRIER', Tools::getIntValue('TBPOS_CARRIER'));
+            Tools::redirectAdmin($this->context->link->getAdminLink('AdminModules', true, [
+                'configure' => $this->name,
+                'conf' => 6
+            ]));
+        }
+
+        $carriers = [];
+        foreach (Carrier::getCarriers($this->context->language->id, true) as $carrier) {
+            $carriers[] = [
+                'id' => (int)$carrier['id_reference'],
+                'name' =>  $carrier['name']
+            ];
+        }
+
+        $settingsForm = [
+            'form' => [
+                'legend' => [
+                    'title' => $this->l('Settings'),
+                    'icon' => 'icon-cogs',
+                ],
+                'input' => [
+                    [
+                        'type'     => 'select',
+                        'label'    => $this->l('Carrier'),
+                        'name'     => 'TBPOS_CARRIER',
+                        'required' => true,
+                        'options' => [
+                            'query' => $carriers,
+                            'id' => 'id',
+                            'name' => 'name'
+                        ]
+                    ],
+                ],
+                'submit' => [
+                    'title' => $this->l('Save'),
+                    'class' => 'btn btn-default pull-right',
+                    'name'  => 'submitSave',
+                ],
+            ],
+        ];
+
+        /** @var AdminController $controller */
+        $controller = $this->context->controller;
+
+        $helper = new HelperForm();
+        $helper->module = $this;
+        $helper->show_toolbar = false;
+        $helper->table = $this->table;
+        $lang = new Language((int)Configuration::get('PS_LANG_DEFAULT'));
+        $helper->default_form_language = $lang->id;
+        $helper->allow_employee_form_lang = (int)Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG');
+
+        $helper->identifier = $this->identifier;
+        $helper->submit_action = 'submitSettings';
+        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name;
+        $helper->token = Tools::getAdminTokenLite('AdminModules');
+        $helper->languages = $controller->getLanguages();
+        $helper->fields_value = [
+            'TBPOS_CARRIER' => Configuration::get('TBPOS_CARRIER'),
+        ];
+
+        return $helper->generateForm([ $settingsForm ]);
+    }
 
 }
