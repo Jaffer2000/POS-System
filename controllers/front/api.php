@@ -175,6 +175,18 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             );
         }
 
+        if ($url === 'orders/change-quantity') {
+            $this->ensureMethod(static::METHOD_POST);
+            $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
+            $body = $this->getBody();
+            return $this->processChangeProductQuantity(
+                $factory,
+                $this->getCart($this->getToken()),
+                (string)$this->getParameter('refcode', $body),
+                (int)$this->getParameter('quantity', $body)
+            );
+        }
+
         if ($url === 'orders/delete-product-from-order') {
             $this->ensureMethod(static::METHOD_POST);
             $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
@@ -405,6 +417,35 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      * @param Factory $factory
      * @param Cart $cart
      * @param string $refcode
+     * @param int $quantity
+     *
+     * @return OrderResponse
+     * @throws NotFoundException
+     * @throws PrestaShopException
+     */
+    private function processChangeProductQuantity(Factory $factory, Cart $cart, string $refcode, int $quantity): OrderResponse
+    {
+        $sku = $factory->getSKUService()->getByReference($refcode);
+        $currentQuantity = 0;
+        foreach ($cart->getProducts() as $item) {
+            if ((int)$item['id_product'] === $sku->productId && (int)$item['id_combination'] === $sku->combinationId) {
+                $currentQuantity += (int)$item['quantity'];
+            }
+        }
+
+        $diff = $quantity - $currentQuantity;
+        if ($quantity > $currentQuantity) {
+            $cart->updateQty($diff, $sku->productId, $sku->combinationId, 0, 'up');
+        } else {
+            $cart->updateQty(abs($diff), $sku->productId, $sku->combinationId, 0, 'down');
+        }
+        return new OrderResponse($cart);
+    }
+
+    /**
+     * @param Factory $factory
+     * @param Cart $cart
+     * @param string $refcode
      *
      * @return OrderResponse
      * @throws NotFoundException
@@ -580,5 +621,6 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             $context->currency = Currency::getCurrencyInstance(Configuration::get('PS_CURRENCY_DEFAULT'));
         }
     }
+
 
 }
