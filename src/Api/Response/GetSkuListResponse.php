@@ -2,13 +2,14 @@
 
 namespace Thirtybees\Module\POS\Api\Response;
 
+use PrestaShopException;
 use Thirtybees\Module\POS\DependencyInjection\Factory;
 use Thirtybees\Module\POS\Sku\Model\Sku;;
 
 /**
  *
  */
-class GetSkuListResponse implements Response
+class GetSkuListResponse extends JSendSuccessResponse
 {
     /**
      * @var Sku[]
@@ -28,12 +29,13 @@ class GetSkuListResponse implements Response
      * @param Factory $factory
      *
      * @return array
+     * @throws PrestaShopException
      */
-    public function getResponse(Factory $factory): array
+    public function getData(Factory $factory): array
     {
         $resp = [];
         foreach ($this->list as $sku) {
-            $resp[] = (new SkuResponse($sku))->getResponse($factory);
+            $resp[] = (new SkuResponse($sku))->getData($factory);
         }
         return $resp;
     }

@@ -23,7 +23,7 @@ use Thirtybees\Module\POS\Auth\Model\Token;
 use Thirtybees\Module\POS\Auth\Model\User;
 use Thirtybees\Module\POS\Exception\AccessDeniedException;
 use Thirtybees\Module\POS\Exception\InvalidArgumentException;
-use Thirtybees\Module\POS\Exception\UnauthorizedException;
+use Thirtybees\Module\POS\Exception\ServerErrorException;
 use Validate;
 
 class AuthServiceImpl implements AuthService
@@ -38,7 +38,6 @@ class AuthServiceImpl implements AuthService
      *
      * @throws AccessDeniedException
      * @throws PrestaShopException
-     * @throws UnauthorizedException
      */
     public function login(string $username, string $password, string $role): User
     {
@@ -59,7 +58,7 @@ class AuthServiceImpl implements AuthService
         $conn = Db::getInstance();
         $roles = $conn->getArray($sql);
         if (!$roles) {
-            throw new UnauthorizedException("Employee does not have '$role' role");
+            throw new AccessDeniedException("Employee does not have '$role' role");
         }
 
         $token = Token::generateToken($employeeId, $role);
@@ -88,14 +87,13 @@ class AuthServiceImpl implements AuthService
      * @param Token $token
      * @return User
      *
-     * @throws AccessDeniedException
      * @throws PrestaShopException
      */
     public function tokenIntrospection(Token $token): User
     {
         $employee = new Employee($token->getEmployeeId());
         if (! Validate::isLoadedObject($employee)) {
-            throw new AccessDeniedException("Employee not found");
+            throw new ServerErrorException("Employee not found");
         }
         return new User($employee, $token);
     }

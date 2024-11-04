@@ -30,7 +30,6 @@ interface AuthService
      * @return User
      *
      * @throws AccessDeniedException
-     * @throws UnauthorizedException
      */
     public function login(string $username, string $password, string $role): User;
 
@@ -44,8 +43,6 @@ interface AuthService
      * @param Token $token
      *
      * @return User
-     *
-     * @throws AccessDeniedException
      */
     public function tokenIntrospection(Token $token): User;
 }

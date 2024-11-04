@@ -9,7 +9,6 @@ use Db;
 use DbQuery;
 use PrestaShopException;
 use Thirtybees\Module\POS\Exception\InvalidArgumentException;
-use Thirtybees\Module\POS\Exception\NotFoundException;
 use Thirtybees\Module\POS\Exception\ServerErrorException;
 use Tools;
 use Employee;
@@ -213,8 +212,8 @@ class Token
 
     /**
      * @return Employee
+     *
      * @throws PrestaShopException
-     * @throws NotFoundException
      */
     public function getEmployee(): Employee
     {
@@ -223,7 +222,7 @@ class Token
             if (Validate::isLoadedObject($employee)) {
                 $this->employee = $employee;
             } else {
-                throw new NotFoundException("Employee with id " . $this->employeeId . " not found");
+                throw new ServerErrorException("Employee with id " . $this->employeeId . " not found");
             }
         }
         return $this->employee;

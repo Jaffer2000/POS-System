@@ -10,13 +10,12 @@ use Tools;
 /**
  *
  */
-class OrderResponse implements Response
+class OrderResponse extends JSendSuccessResponse
 {
     /**
      * @var Cart
      */
     private Cart $cart;
-
     /**
      * @param Cart $cart
      */
@@ -32,7 +31,7 @@ class OrderResponse implements Response
      *
      * @throws PrestaShopException
      */
-    public function getResponse(Factory $factory): array
+    public function getData(Factory $factory): array
     {
         $subtotal = Tools::roundPrice($this->cart->getOrderTotal(true, Cart::ONLY_PRODUCTS_WITHOUT_SHIPPING));
         $total = Tools::roundPrice($this->cart->getOrderTotal(true));

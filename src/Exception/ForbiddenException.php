@@ -14,6 +14,6 @@
 
 namespace Thirtybees\Module\POS\Exception;
 
-class UnauthorizedException extends \Exception
+class ForbiddenException extends \Exception
 {
 }

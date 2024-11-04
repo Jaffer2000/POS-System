@@ -1,21 +1,26 @@
 <?php
 
-use Thirtybees\Core\DependencyInjection\ServiceLocator;
+use Thirtybees\Core\DependencyInjection\ServiceLocatorCore;
 use Thirtybees\Core\Error\ErrorUtils;
-use Thirtybees\Core\Error\Response\JSendErrorResponse;
+use Thirtybees\Module\POS\Api\Response\AccessDeniedResponse;
+use Thirtybees\Module\POS\Api\Response\BadRequestResponse;
+use Thirtybees\Module\POS\Api\Response\ForbiddenResponse;
 use Thirtybees\Module\POS\Api\Response\GetSkuListResponse;
+use Thirtybees\Module\POS\Api\Response\JSendErrorResponse;
+use Thirtybees\Module\POS\Api\Response\JSendResponse;
+use Thirtybees\Module\POS\Api\Response\MinimalQuantityRequiredResponse;
+use Thirtybees\Module\POS\Api\Response\NotFoundResponse;
 use Thirtybees\Module\POS\Api\Response\OrderResponse;
+use Thirtybees\Module\POS\Api\Response\OutOfStockResponse;
 use Thirtybees\Module\POS\Api\Response\SkuResponse;
-use Thirtybees\Module\POS\Api\Response\Response;
 use Thirtybees\Module\POS\Api\Response\UserResponse;
 use Thirtybees\Module\POS\Auth\Model\Role;
 use Thirtybees\Module\POS\Auth\Model\Token;
 use Thirtybees\Module\POS\DependencyInjection\Factory;
 use Thirtybees\Module\POS\Exception\AccessDeniedException;
+use Thirtybees\Module\POS\Exception\ForbiddenException;
 use Thirtybees\Module\POS\Exception\InvalidRequestException;
-use Thirtybees\Module\POS\Exception\NotAllowedException;
 use Thirtybees\Module\POS\Exception\NotFoundException;
-use Thirtybees\Module\POS\Exception\UnauthorizedException;
 
 /**
  * Copyright (C) 2022-2022 thirty bees <contact@thirtybees.com>
@@ -44,11 +49,9 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      */
     public $module;
 
-    protected $token;
-
-
     /**
      * @return void
+     *
      * @throws PrestaShopException
      */
     public function init()
@@ -63,48 +66,51 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
 
         $this->initContext();
 
-        ServiceLocator::getInstance()->getErrorHandler()->setErrorResponseHandler(new JSendErrorResponse(_PS_MODE_DEV_));
-
+        $factory = $this->module->getFactory();
         try {
-            $factory = $this->module->getFactory();
-            $response = $this->dispatch($factory, Tools::getValue('apiUrl'));
-            $this->sendResponse($response->getResponse($factory));
-        } catch (AccessDeniedException $e) {
-            $this->sendFailResponse($e->getMessage(), 401);
-        } catch (InvalidRequestException $e) {
-            $this->sendFailResponse($e->getMessage(), 400);
-        } catch (NotAllowedException $e) {
-            $this->sendFailResponse($e->getMessage(), 403);
-        } catch (NotFoundException $e) {
-            $this->sendFailResponse($e->getMessage(), 404);
-        } catch (UnauthorizedException $e) {
-            $this->sendFailResponse($e->getMessage(), 403);
+            $response = $this->processRequest($factory);
         } catch (Throwable $e) {
-            $errorHandler = ServiceLocator::getInstance()->getErrorHandler();
-            $errorHandler->logFatalError(ErrorUtils::describeException($e));
-            $this->sendFailResponse($e->getMessage(), 500);
+            $desc = ErrorUtils::describeException($e);
+            ServiceLocatorCore::getInstance()->getErrorHandler()->logFatalError($desc);
+            if (_PS_MODE_DEV_) {
+            $message = $desc->getExtendedMessage();
+            } else {
+                $message = "Internal server error";
+            }
+            $response = new JSendErrorResponse($message);
         }
+        $this->sendResponse($response->getResponse($factory), $response->getResponseCode() );
     }
 
     /**
-     * @param string $responseMessage
-     * @param int $responseCode
+     * @param Factory $factory
      *
-     * @return void
+     * @return JSendResponse
+     *
+     * @throws PrestaShopException
      */
-    public function sendFailResponse(string $responseMessage, int $responseCode)
+    protected function processRequest(Factory $factory): JSendResponse
     {
-        $this->sendResponse(['error' => $responseMessage], $responseCode, $responseMessage);
+        $factory = $this->module->getFactory();
+        try {
+            return $this->dispatch($factory, Tools::getValue('apiUrl'));
+        } catch (AccessDeniedException $e) {
+            return new AccessDeniedResponse($e->getMessage());
+        } catch (ForbiddenException $e) {
+            return new ForbiddenResponse($e->getMessage());
+        } catch (InvalidRequestException $e) {
+            return new BadRequestResponse($e->getMessage());
+        }
     }
 
     /**
      * @param array $payload
      */
-    protected function sendResponse($payload, int $responseCode = 200, string $responseMessage = null)
+    protected function sendResponse($payload, int $responseCode = 200)
     {
         if (! headers_sent()) {
             header('Content-Type: application/json');
-            $this->setResponseCode($responseCode, $responseMessage);
+            $this->setResponseCode($responseCode);
         }
         die(json_encode($payload, JSON_PRETTY_PRINT));
     }
@@ -112,15 +118,15 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
     /**
      * @param Factory $factory
      * @param string $url
-     * @return Response
+     *
+     * @return JSendResponse
      *
      * @throws AccessDeniedException
+     * @throws ForbiddenException
      * @throws InvalidRequestException
-     * @throws NotFoundException
      * @throws PrestaShopException
-     * @throws UnauthorizedException
      */
-    protected function dispatch(Factory $factory, string $url): Response
+    protected function dispatch(Factory $factory, string $url): JSendResponse
     {
         $url = trim($url, '/');
         if ($url === 'products') {
@@ -139,11 +145,8 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
 
         if ($url === 'token') {
             $this->ensureMethod(static::METHOD_GET);
-            $this->ensureAccess(Role::getRoles());
-            return $this->processTokenIntrospection(
-                $factory,
-                $this->getToken()
-            );
+            $token = $this->ensureAccess(Role::getRoles());
+            return $this->processTokenIntrospection($factory, $token);
         }
 
         if ($url === 'users') {
@@ -159,17 +162,17 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
 
         if ($url === 'orders/current'){
             $this->ensureMethod(static::METHOD_GET);
-            $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
-            return $this->processOrderIntrospection($this->getCart($this->getToken()));
+            $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
+            return $this->processOrderIntrospection($this->getCart($token));
         }
 
         if ($url === 'orders/add-product-to-order') {
             $this->ensureMethod(static::METHOD_POST);
-            $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
+            $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
             $body = $this->getBody();
             return $this->processAddProductToOrder(
                 $factory,
-                $this->getCart($this->getToken()),
+                $this->getCart($token),
                 (string)$this->getParameter('refcode', $body),
                 (int)$this->getParameter('quantity', $body)
             );
@@ -177,11 +180,11 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
 
         if ($url === 'orders/change-quantity') {
             $this->ensureMethod(static::METHOD_POST);
-            $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
+            $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
             $body = $this->getBody();
             return $this->processChangeProductQuantity(
                 $factory,
-                $this->getCart($this->getToken()),
+                $this->getCart($token),
                 (string)$this->getParameter('refcode', $body),
                 (int)$this->getParameter('quantity', $body)
             );
@@ -189,28 +192,29 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
 
         if ($url === 'orders/delete-product-from-order') {
             $this->ensureMethod(static::METHOD_POST);
-            $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
+            $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
             $body = $this->getBody();
             return $this->processDeleteProductFromOrder(
                 $factory,
-                $this->getCart($this->getToken()),
+                $this->getCart($token),
                 (string)$this->getParameter('refcode', $body)
             );
         }
 
         if ($url === 'orders/apply-discount') {
             $this->ensureMethod(static::METHOD_POST);
-            $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
+            $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
             $body = $this->getBody();
             return $this->processApplyDiscount(
                 $factory,
-                $this->getCart($this->getToken()),
+                $token->getEmployee(),
+                $this->getCart($token),
                 $this->toDiscountType((string)$this->getParameter('discount_type', $body), 'discount_type'),
                 Tools::parseNumber($this->getParameter('value', $body))
             );
         }
 
-        throw new InvalidRequestException("Unknown action: '$url'", 404);
+        return new BadRequestResponse("Invalid request URI: {$url}", 404);
     }
 
     /**
@@ -228,18 +232,27 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
 
     /**
      * @param string[] $allowedRoles
-     * @return void
+     * @return Token
+     *
      * @throws AccessDeniedException
-     * @throws UnauthorizedException
      * @throws PrestaShopException
-     * @throws NotFoundException
+     * @throws ForbiddenException
      */
-    protected function ensureAccess(array $allowedRoles)
+    protected function ensureAccess(array $allowedRoles): Token
     {
-        $token = $this->getToken();
+        $value = trim($_SERVER['HTTP_AUTHORIZATION'] ?? '');
+        if (! $value) {
+            throw new AccessDeniedException("Token required");
+        }
+        $token = Token::getFromAuthHeader($value);
+        if (! $token) {
+            throw new AccessDeniedException("Invalid token");
+        }
+
         $allowedRoles[] = Role::ROLE_ADMIN;
+        $allowedRoles = array_unique($allowedRoles);
         if (! in_array($token->getRole(), $allowedRoles)) {
-            throw new UnauthorizedException();
+            throw new ForbiddenException("To access this resource you need to have one of following roles: [".implode(', ', $allowedRoles)."]");
         }
 
         $context = Context::getContext();
@@ -249,6 +262,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         if ((int)$context->language->id_lang !== $languageId) {
             $context->language = new Language($languageId);
         }
+        return $token;
     }
 
     /**
@@ -287,27 +301,6 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         }
 
         return $context->cart;
-    }
-
-    /**
-     * @return Token
-     * @throws PrestaShopException
-     * @throws AccessDeniedException
-     */
-    protected function getToken(): Token
-    {
-        if ($this->token === null) {
-            $value = trim($_SERVER['HTTP_AUTHORIZATION'] ?? '');
-            if (! $value) {
-                throw new AccessDeniedException("Token required");
-            }
-            $token = Token::getFromAuthHeader($value);
-            if (! $token) {
-                throw new AccessDeniedException("Invalid token");
-            }
-            $this->token = $token;
-        }
-        return $this->token;
     }
 
     /**
@@ -351,17 +344,11 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
 
     /**
      * @param int $responseCode
-     * @param string|null $responseMessage
      * @return void
      */
-    protected function setResponseCode(int $responseCode, string $responseMessage = null)
+    protected function setResponseCode(int $responseCode)
     {
-        if ($responseMessage) {
-            $protocol = $_SERVER['SERVER_PROTOCOL'] ?? 'HTTP/1.0';
-            header($protocol . ' ' . $responseCode . ' ' . $responseMessage);
-        } else {
-            http_response_code($responseCode);
-        }
+        http_response_code($responseCode);
     }
 
     /**
@@ -372,8 +359,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
     protected function processGetProducts(Factory $factory): GetSkuListResponse
     {
         $list = $factory->getSKUService()->findAll();
-        $response = new GetSkuListResponse($list);
-        return $response;
+        return new GetSkuListResponse($list);
     }
 
 
@@ -381,27 +367,34 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      * @param Factory $factory
      * @param int $productId
      * @param int $combinationId
-     * @return SkuResponse
      *
-     * @throws NotFoundException
+     * @return SkuResponse|NotFoundResponse
      */
-    private function processGetProductById(Factory $factory, int $productId, int $combinationId): SkuResponse
+    private function processGetProductById(Factory $factory, int $productId, int $combinationId): SkuResponse|NotFoundResponse
     {
-        $sku = $factory->getSKUService()->getById($productId, $combinationId);
-        return new SkuResponse($sku);
+        try {
+            $sku = $factory->getSKUService()->getById($productId, $combinationId);
+            return new SkuResponse($sku);
+        } catch (NotFoundException $e) {
+            return new NotFoundResponse($e->getMessage());
+        }
     }
+
 
     /**
      * @param Factory $factory
      * @param string $reference
-     * @return SkuResponse
      *
-     * @throws NotFoundException
+     * @return SkuResponse|NotFoundResponse
      */
-    private function processGetProductByReference(Factory $factory, string $reference): SkuResponse
+    private function processGetProductByReference(Factory $factory, string $reference):  SkuResponse|NotFoundResponse
     {
-        $sku = $factory->getSKUService()->getByReference($reference);
-        return new SkuResponse($sku);
+        try {
+            $sku = $factory->getSKUService()->getByReference($reference);
+            return new SkuResponse($sku);
+        } catch (NotFoundException $e) {
+            return new NotFoundResponse($e->getMessage());
+        }
     }
 
     /**
@@ -410,16 +403,28 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      * @param string $refcode
      * @param int $quantity
      *
-     * @return OrderResponse
-     * @throws NotFoundException
+     * @return OrderResponse|NotFoundResponse|BadRequestResponse|OutOfStockResponse|MinimalQuantityRequiredResponse
      * @throws PrestaShopException
      */
-    private function processAddProductToOrder(Factory $factory, Cart $cart, string $refcode, int $quantity): OrderResponse
+    private function processAddProductToOrder(Factory $factory, Cart $cart, string $refcode, int $quantity)
+        : OrderResponse
+        | NotFoundResponse
+        | BadRequestResponse
+        | OutOfStockResponse
+        | MinimalQuantityRequiredResponse
     {
-        $product = $factory->getSKUService()->getByReference($refcode);
-        $operator = $quantity > 0 ? 'up' : 'down';
-        $cart->updateQty(abs($quantity), $product->productId, $product->combinationId, 0, $operator);
-        return new OrderResponse($cart);
+        $sku = $factory->getSKUService()->findByReference($refcode);
+        if (! $sku) {
+            return new NotFoundResponse("SKU with reference code '$refcode' not found");
+        }
+        $currentQuantity = 0;
+        foreach ($cart->getProducts() as $item) {
+            if ((int)$item['id_product'] === $sku->productId && (int)$item['id_combination'] === $sku->combinationId) {
+                $currentQuantity += (int)$item['quantity'];
+            }
+        }
+        $newQuantity = $currentQuantity + $quantity;
+        return $this->processChangeProductQuantity($factory, $cart, $refcode, $newQuantity);
     }
 
     /**
@@ -428,13 +433,27 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      * @param string $refcode
      * @param int $quantity
      *
-     * @return OrderResponse
-     * @throws NotFoundException
+     *
+     * @return OrderResponse|NotFoundResponse|BadRequestResponse|OutOfStockResponse|MinimalQuantityRequiredResponse
+     *
      * @throws PrestaShopException
      */
-    private function processChangeProductQuantity(Factory $factory, Cart $cart, string $refcode, int $quantity): OrderResponse
+    private function processChangeProductQuantity(Factory $factory, Cart $cart, string $refcode, int $quantity)
+        : OrderResponse
+        | NotFoundResponse
+        | BadRequestResponse
+        | OutOfStockResponse
+        | MinimalQuantityRequiredResponse
     {
-        $sku = $factory->getSKUService()->getByReference($refcode);
+        $sku = $factory->getSKUService()->findByReference($refcode);
+        if (! $sku) {
+            return new NotFoundResponse("SKU with reference code '$refcode' not found");
+        }
+
+        if ($quantity < 0) {
+            return new BadRequestResponse("Quantity can't be negative");
+        }
+
         $currentQuantity = 0;
         foreach ($cart->getProducts() as $item) {
             if ((int)$item['id_product'] === $sku->productId && (int)$item['id_combination'] === $sku->combinationId) {
@@ -443,10 +462,25 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         }
 
         $diff = $quantity - $currentQuantity;
-        if ($quantity > $currentQuantity) {
-            $cart->updateQty($diff, $sku->productId, $sku->combinationId, 0, 'up');
+
+        if ($diff > 0) {
+            $result = $cart->updateQty($diff, $sku->productId, $sku->combinationId, 0, 'up');
+        } elseif ($diff < 0) {
+            $result = $cart->updateQty(abs($diff), $sku->productId, $sku->combinationId, 0, 'down');
         } else {
-            $cart->updateQty(abs($diff), $sku->productId, $sku->combinationId, 0, 'down');
+            $result = true;
+        }
+
+        if (! $result) {
+            return new OutOfStockResponse($sku, StockAvailable::getQuantityAvailableByProduct($sku->productId, $sku->combinationId));
+        } elseif ($result < 0) {
+            if ($sku->combinationId) {
+                $minimalQty = ProductAttribute::getAttributeMinimalQty($sku->combinationId);
+            } else {
+                $product = new Product($sku->productId);
+                $minimalQty = $product->minimal_quantity;
+            }
+            return new MinimalQuantityRequiredResponse($sku, $minimalQty);
         }
         return new OrderResponse($cart);
     }
@@ -456,13 +490,18 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      * @param Cart $cart
      * @param string $refcode
      *
-     * @return OrderResponse
-     * @throws NotFoundException
+     * @return OrderResponse|NotFoundResponse
+     *
+     * @throws OrderResponse
      * @throws PrestaShopException
      */
-    private function processDeleteProductFromOrder(Factory $factory, Cart $cart, string $refcode): OrderResponse
+    private function processDeleteProductFromOrder(Factory $factory, Cart $cart, string $refcode): OrderResponse|NotFoundResponse
     {
-        $sku = $factory->getSKUService()->getByReference($refcode);
+        try {
+            $sku = $factory->getSKUService()->getByReference($refcode);
+        } catch (NotFoundException $e) {
+            return new NotFoundResponse($e->getMessage());
+        }
         $quantity = 0;
         foreach ($cart->getProducts() as $item) {
             if ((int)$item['id_product'] === $sku->productId && (int)$item['id_combination'] === $sku->combinationId) {
@@ -492,9 +531,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      * @param string $role
      *
      * @return UserResponse
-     *
      * @throws AccessDeniedException
-     * @throws UnauthorizedException
      */
     protected function processLogin(
         Factory $factory,
@@ -510,11 +547,9 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      * @param Factory $factory
      * @param Token $token
      *
-     * @return UserResponse
-     *
-     * @throws AccessDeniedException
+     * @return JSendResponse
      */
-    private function processTokenIntrospection(Factory $factory, Token $token): UserResponse
+    private function processTokenIntrospection(Factory $factory, Token $token): JSendResponse
     {
         $user = $factory->authService()->tokenIntrospection($token);
         return new UserResponse($user);
@@ -522,17 +557,16 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
 
     /**
      * @param Factory $factory
+     * @param Employee $employee
      * @param Cart $cart
      * @param string $discountType
      * @param float $value
      *
-     * @return void
+     * @return OrderResponse
      *
      * @throws PrestaShopException
-     * @throws NotFoundException
-     * @throws AccessDeniedException
      */
-    private function processApplyDiscount(Factory $factory, Cart $cart, string $discountType, float $value): OrderResponse
+    private function processApplyDiscount(Factory $factory, Employee $employee, Cart $cart, string $discountType, float $value): OrderResponse
     {
         $cartId = (int)$cart->id;
         $orderLevelPrefix = "POS_{$cartId}_";
@@ -544,7 +578,6 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             $cart->removeCartRule((int)$cartRule->id);
         }
 
-        $employee = $this->getToken()->getEmployee();
         $employeeID = (int)$employee->id;
 
         $languageIds = Language::getIDs(false);

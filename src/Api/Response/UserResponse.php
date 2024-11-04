@@ -5,7 +5,7 @@ namespace Thirtybees\Module\POS\Api\Response;
 use Thirtybees\Module\POS\Auth\Model\User;
 use Thirtybees\Module\POS\DependencyInjection\Factory;
 
-class UserResponse implements Response
+class UserResponse extends JSendSuccessResponse
 {
 
     /**
@@ -21,13 +21,12 @@ class UserResponse implements Response
         $this->user = $user;
     }
 
-
     /**
      * @param Factory $factory
      *
      * @return array
      */
-    public function getResponse(Factory $factory): array
+    public function getData(Factory $factory): array
     {
         $employee = $this->user->getEmployee();
         $token = $this->user->getToken();

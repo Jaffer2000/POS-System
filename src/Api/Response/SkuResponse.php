@@ -10,7 +10,7 @@ use Thirtybees\Module\POS\Sku\Model\Sku;;
 /**
  *
  */
-class SkuResponse implements Response
+class SkuResponse extends JSendSuccessResponse
 {
     /**
      * @var Sku
@@ -31,7 +31,7 @@ class SkuResponse implements Response
      * @return array
      * @throws PrestaShopException
      */
-    public function getResponse(Factory $factory): array
+    public function getData(Factory $factory): array
     {
         return [
             'name' => $this->sku->getName(),
