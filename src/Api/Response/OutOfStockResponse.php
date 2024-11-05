@@ -29,7 +29,7 @@ class OutOfStockResponse extends JSendFailResponse
     {
         return [
             'code' => 'OUT_OF_STOCK',
-            'product_id' => $this->sku->getSkuId(),
+            'skuId' => $this->sku->getSkuId(),
             'quantityAvailable' => $this->quantityAvailable,
             'message' => "Product is out of stock",
         ];

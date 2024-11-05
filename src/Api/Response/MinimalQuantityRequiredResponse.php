@@ -36,9 +36,9 @@ class MinimalQuantityRequiredResponse extends JSendFailResponse
     {
         return [
             'code' => 'MINIMAL_QUANTITY_REQUIRED',
-            'product_id' => $this->sku->getSkuId(),
+            'skuId' => $this->sku->getSkuId(),
             'minQuantity' => $this->minQuantity,
-            'message' => sprintf("Minimal quantity of %s ", $this->minQuantity),
+            'message' => sprintf("Minimal quantity of %s is required", $this->minQuantity),
         ];
     }
 

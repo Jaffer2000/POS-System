@@ -18,7 +18,7 @@ require_once(__DIR__ . '/vendor/autoload.php');
  * @license   Licensed under the Thirty Bees Regular License version 1.0
  */
 
-class TbPOS extends Module
+class TbPOS extends PaymentModule
 {
     /**
      * @var Factory

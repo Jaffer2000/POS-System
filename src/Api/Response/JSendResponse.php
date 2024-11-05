@@ -66,7 +66,7 @@ abstract class JSendResponse
     protected function returnError(string $message): array
     {
         return [
-            'type' => static::TYPE_ERROR,
+            'status' => static::TYPE_ERROR,
             'message' => $message,
         ];
     }
@@ -78,7 +78,7 @@ abstract class JSendResponse
     protected function returnSuccess(array $data): array
     {
         return [
-            'type' => static::TYPE_SUCCESS,
+            'status' => static::TYPE_SUCCESS,
             'data' => $data
         ];
     }
@@ -90,7 +90,7 @@ abstract class JSendResponse
     protected function returnFail(array $data): array
     {
         return [
-            'type' => static::TYPE_FAIL,
+            'status' => static::TYPE_FAIL,
             'data' => $data
         ];
     }

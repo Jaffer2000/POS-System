@@ -4,8 +4,11 @@ use Thirtybees\Core\DependencyInjection\ServiceLocatorCore;
 use Thirtybees\Core\Error\ErrorUtils;
 use Thirtybees\Module\POS\Api\Response\AccessDeniedResponse;
 use Thirtybees\Module\POS\Api\Response\BadRequestResponse;
+use Thirtybees\Module\POS\Api\Response\CashPaymentResponse;
+use Thirtybees\Module\POS\Api\Response\CollectCashResponse;
 use Thirtybees\Module\POS\Api\Response\ForbiddenResponse;
 use Thirtybees\Module\POS\Api\Response\GetSkuListResponse;
+use Thirtybees\Module\POS\Api\Response\InvalidAmountCollectedResponse;
 use Thirtybees\Module\POS\Api\Response\JSendErrorResponse;
 use Thirtybees\Module\POS\Api\Response\JSendResponse;
 use Thirtybees\Module\POS\Api\Response\MinimalQuantityRequiredResponse;
@@ -43,6 +46,9 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
 
     const DISCOUNT_PERCENTAGE = 'percentage';
     const DISCOUNT_AMOUNT = 'amount';
+
+    const PAYMENT_METDHOD_CASH = 'CASH';
+    const PAYMENT_METDHOD_CREDIT_CARD = 'CREDIT_CARD';
 
     /**
      * @var TbPOS
@@ -88,6 +94,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      * @return JSendResponse
      *
      * @throws PrestaShopException
+     * @throws SmartyException
      */
     protected function processRequest(Factory $factory): JSendResponse
     {
@@ -125,6 +132,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      * @throws ForbiddenException
      * @throws InvalidRequestException
      * @throws PrestaShopException
+     * @throws SmartyException
      */
     protected function dispatch(Factory $factory, string $url): JSendResponse
     {
@@ -214,6 +222,28 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             );
         }
 
+        if ($url === 'checkout') {
+            $this->ensureMethod(static::METHOD_POST);
+            $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
+            $body = $this->getBody();
+            return $this->processCheckout(
+                $factory,
+                $this->getCart($token),
+                $this->toPaymentMethod((string)$this->getParameter('paymentMethod', $body), 'paymentMethod'),
+            );
+        }
+
+        if ($url === 'payment/cash') {
+            $this->ensureMethod(static::METHOD_POST);
+            $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
+            $body = $this->getBody();
+            return $this->processPaymentCash(
+                $factory,
+                $this->getCart($token),
+                Tools::parseNumber($this->getParameter('amount', $body), 'amount'),
+            );
+        }
+
         return new BadRequestResponse("Invalid request URI: {$url}", 404);
     }
 
@@ -285,6 +315,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             $cart->id_currency = (int)Configuration::get('PS_CURRENCY_DEFAULT');
             $cart->id_customer = 0;
             $cart->id_carrier = $carrierId;
+            $cart->secure_key = md5(Tools::passwdGen(32));
             $cart->save();
             $token->updateCartId($cart->id);
             $context->cart = $cart;
@@ -612,6 +643,51 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
     }
 
     /**
+     * @param Factory $factory
+     * @param Cart $cart
+     * @param string $paymentMethod
+     *
+     * @return CollectCashResponse|BadRequestResponse
+     */
+    private function processCheckout(Factory $factory, Cart $cart, string $paymentMethod)
+        : CollectCashResponse
+        | BadRequestResponse
+    {
+        switch ($paymentMethod) {
+            case static::PAYMENT_METDHOD_CASH:
+                return new CollectCashResponse($cart);
+            case static::PAYMENT_METDHOD_CREDIT_CARD:
+                throw new RuntimeException("Not implemented yet");
+            default:
+                return new BadRequestResponse("Unknown payment method: $paymentMethod");
+        }
+    }
+
+    /**
+     * @param Factory $factory
+     * @param Cart $cart
+     * @param float $amount
+     *
+     * @return InvalidAmountCollectedResponse|CashPaymentResponse
+     *
+     * @throws PrestaShopException
+     * @throws SmartyException
+     */
+    private function processPaymentCash(Factory $factory, Cart $cart, float $amount)
+        : InvalidAmountCollectedResponse
+        | CashPaymentResponse
+    {
+        $amount = Tools::roundPrice($amount);
+        $total = Tools::roundPrice($cart->getOrderTotal());
+        if ($amount !== $total) {
+            return new InvalidAmountCollectedResponse($amount, $cart);
+        }
+        $order = $this->createOrder($cart, $amount, static::PAYMENT_METDHOD_CASH);
+        return new CashPaymentResponse($order);
+    }
+
+
+    /**
      * @param array $cartRules
      * @param string $orderCartRulePrefix
      * @return CartRule|null
@@ -648,6 +724,26 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         throw new InvalidRequestException("Invalid value for parameter '$paramName'");
     }
 
+
+    /**
+     * @param string $param
+     * @param string $paramName
+     *
+     * @return string
+     *
+     * @throws InvalidRequestException
+     */
+    private function toPaymentMethod(string $param, string $paramName): string
+    {
+        switch (strtoupper($param)) {
+            case static::PAYMENT_METDHOD_CASH:
+                return static::PAYMENT_METDHOD_CASH;
+            case static::PAYMENT_METDHOD_CREDIT_CARD:
+                return static::PAYMENT_METDHOD_CREDIT_CARD;
+        }
+        throw new InvalidRequestException("Invalid value for parameter '$paramName'");
+    }
+
     /**
      * @return void
      *
@@ -664,5 +760,31 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         }
     }
 
+    /**
+     * @param Cart $cart
+     * @param float $amount
+     * @param string $paymentMethod
+     * @return Order
+     *
+     * @throws PrestaShopException
+     * @throws SmartyException
+     */
+    private function createOrder(Cart $cart, float $amount, string $paymentMethod): Order
+    {
+        if ($this->module->validateOrder(
+            $cart->id,
+            Configuration::get('PS_OS_BANKWIRE'),
+            $amount,
+            $this->module->displayName,
+            null,
+            [],
+            (int) $cart->id_currency,
+            false,
+            $cart->secure_key
+        )) {
+            return new Order($this->module->currentOrder);
+        }
+        throw new RuntimeException("Failed to create order");
+    }
 
 }
