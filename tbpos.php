@@ -2,6 +2,7 @@
 
 use Thirtybees\Module\POS\Auth\Model\Role;
 use Thirtybees\Module\POS\DependencyInjection\Factory;
+use Thirtybees\Module\POS\OrderProcess\Model\OrderProcess;
 
 require_once(__DIR__ . '/vendor/autoload.php');
 
@@ -135,14 +136,16 @@ class TbPOS extends PaymentModule
                 'ENGINE_TYPE',
                 'CHARSET_TYPE',
                 'COLLATE_TYPE',
-                'ENUM_VALUES_ROLES'
+                'ENUM_VALUES_ROLES',
+                'ENUM_VALUES_ORDER_PROCESS_STATUSES',
             ],
             [
                 _DB_PREFIX_,
                 _MYSQL_ENGINE_,
                 'utf8mb4',
                 'utf8mb4_unicode_ci',
-                $this->getEnumValues(Role::getRoles())
+                $this->getEnumValues(Role::getRoles()),
+                $this->getEnumValues(OrderProcess::validStatuses()),
             ],
             $sql
         );
@@ -195,7 +198,7 @@ class TbPOS extends PaymentModule
     public function getFactory(): Factory
     {
         if (is_null($this->factory)) {
-            $this->factory = new Factory();
+            $this->factory = new Factory($this);
         }
 
         return $this->factory;

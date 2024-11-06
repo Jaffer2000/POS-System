@@ -2,8 +2,6 @@
 
 namespace Thirtybees\Module\POS\Api\Response;
 
-use Cart;
-use PrestaShopException;
 use Thirtybees\Module\POS\DependencyInjection\Factory;
 use Tools;
 
@@ -13,9 +11,9 @@ use Tools;
 class InvalidAmountCollectedResponse extends JSendFailResponse
 {
     /**
-     * @var Cart
+     * @var float
      */
-    private Cart $cart;
+    private float $exptected;
 
     /**
      * @var float
@@ -24,27 +22,24 @@ class InvalidAmountCollectedResponse extends JSendFailResponse
 
     /**
      * @param float $amount
-     * @param Cart $cart
+     * @param float $exptected
      */
-    public function __construct(float $amount, Cart $cart)
+    public function __construct(float $amount, float $exptected)
     {
         $this->amount = $amount;
-        $this->cart = $cart;
+        $this->exptected = $exptected;
     }
 
     /**
      * @param Factory $factory
      *
      * @return array
-     *
-     * @throws PrestaShopException
      */
     public function getData(Factory $factory): array
     {
-        $expected = $this->cart->getOrderTotal();
         return [
             'action' => 'INVALID_AMOUNT',
-            'expectedAmount' => Tools::roundPrice($expected),
+            'expectedAmount' => Tools::roundPrice($this->exptected),
             'collectedAmount' => Tools::roundPrice($this->amount),
         ];
     }

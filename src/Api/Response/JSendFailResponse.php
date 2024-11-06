@@ -9,7 +9,7 @@ abstract class JSendFailResponse extends JSendResponse
      */
     public function getType(): string
     {
-        return static::TYPE_FAIL;
+        return self::TYPE_FAIL;
     }
 
 }

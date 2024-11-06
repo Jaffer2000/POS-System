@@ -15,10 +15,12 @@
 namespace Thirtybees\Module\POS\Auth\Service;
 
 
+use PrestaShopException;
 use Thirtybees\Module\POS\Auth\Model\Token;
 use Thirtybees\Module\POS\Auth\Model\User;
 use Thirtybees\Module\POS\Exception\AccessDeniedException;
 use Thirtybees\Module\POS\Exception\UnauthorizedException;
+use Thirtybees\Module\POS\OrderProcess\Model\OrderProcess;
 
 interface AuthService
 {
@@ -34,15 +36,46 @@ interface AuthService
     public function login(string $username, string $password, string $role): User;
 
     /**
+     * @param string $value
+     * @return Token|null
+     * @throws PrestaShopException
+     */
+    public function findToken(string $value): ?Token;
+
+    /**
      * @param Token $token
      * @return Token
+     * @throws PrestaShopException
      */
     public function exchangeToken(Token $token): Token;
 
     /**
      * @param Token $token
-     *
      * @return User
+     * @throws PrestaShopException
      */
     public function tokenIntrospection(Token $token): User;
+
+    /**
+     * @param Token $token
+     * @return Token
+     * @throws PrestaShopException
+     */
+    public function revoke(Token $token): Token;
+
+    /**
+     * @param Token $token
+     * @param OrderProcess $orderProcess
+     * @return Token
+     * @throws PrestaShopException
+     */
+    public function updateTokenProcess(Token $token, OrderProcess $orderProcess): Token;
+
+    /**
+     * @param Token $token
+     * @return Token
+     * @throws PrestaShopException
+     */
+    public function unsetTokenProcess(Token $token): Token;
+
 }

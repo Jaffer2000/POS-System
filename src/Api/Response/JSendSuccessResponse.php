@@ -9,7 +9,7 @@ abstract class JSendSuccessResponse extends JSendResponse
      */
     public function getType(): string
     {
-        return static::TYPE_SUCCESS;
+        return self::TYPE_SUCCESS;
     }
 
     /**

@@ -48,11 +48,11 @@ abstract class JSendResponse
     {
         $type = $this->getType();
         switch ($type) {
-            case static::TYPE_SUCCESS:
+            case self::TYPE_SUCCESS:
                 return $this->returnSuccess($this->getData($factory));
-            case static::TYPE_FAIL:
+            case self::TYPE_FAIL:
                 return $this->returnFail($this->getData($factory));
-            case static::TYPE_ERROR:
+            case self::TYPE_ERROR:
                 return $this->returnError($this->getMessage($factory));
             default:
                 return $this->returnError("Invalid jsend response type: '$type'");
@@ -66,7 +66,7 @@ abstract class JSendResponse
     protected function returnError(string $message): array
     {
         return [
-            'status' => static::TYPE_ERROR,
+            'status' => self::TYPE_ERROR,
             'message' => $message,
         ];
     }
@@ -78,7 +78,7 @@ abstract class JSendResponse
     protected function returnSuccess(array $data): array
     {
         return [
-            'status' => static::TYPE_SUCCESS,
+            'status' => self::TYPE_SUCCESS,
             'data' => $data
         ];
     }
@@ -90,7 +90,7 @@ abstract class JSendResponse
     protected function returnFail(array $data): array
     {
         return [
-            'status' => static::TYPE_FAIL,
+            'status' => self::TYPE_FAIL,
             'data' => $data
         ];
     }

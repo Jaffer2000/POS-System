@@ -4,8 +4,6 @@ use Thirtybees\Core\DependencyInjection\ServiceLocatorCore;
 use Thirtybees\Core\Error\ErrorUtils;
 use Thirtybees\Module\POS\Api\Response\AccessDeniedResponse;
 use Thirtybees\Module\POS\Api\Response\BadRequestResponse;
-use Thirtybees\Module\POS\Api\Response\CashPaymentResponse;
-use Thirtybees\Module\POS\Api\Response\CollectCashResponse;
 use Thirtybees\Module\POS\Api\Response\ForbiddenResponse;
 use Thirtybees\Module\POS\Api\Response\GetSkuListResponse;
 use Thirtybees\Module\POS\Api\Response\InvalidAmountCollectedResponse;
@@ -13,7 +11,7 @@ use Thirtybees\Module\POS\Api\Response\JSendErrorResponse;
 use Thirtybees\Module\POS\Api\Response\JSendResponse;
 use Thirtybees\Module\POS\Api\Response\MinimalQuantityRequiredResponse;
 use Thirtybees\Module\POS\Api\Response\NotFoundResponse;
-use Thirtybees\Module\POS\Api\Response\OrderResponse;
+use Thirtybees\Module\POS\Api\Response\OrderProcessResponse;
 use Thirtybees\Module\POS\Api\Response\OutOfStockResponse;
 use Thirtybees\Module\POS\Api\Response\SkuResponse;
 use Thirtybees\Module\POS\Api\Response\UserResponse;
@@ -24,6 +22,9 @@ use Thirtybees\Module\POS\Exception\AccessDeniedException;
 use Thirtybees\Module\POS\Exception\ForbiddenException;
 use Thirtybees\Module\POS\Exception\InvalidRequestException;
 use Thirtybees\Module\POS\Exception\NotFoundException;
+use Thirtybees\Module\POS\OrderProcess\Model\OrderProcess;
+use Thirtybees\Module\POS\Payment\Method\CashPaymentMethod;
+use Thirtybees\Module\POS\Payment\Method\PaymentMethod;
 
 /**
  * Copyright (C) 2022-2022 thirty bees <contact@thirtybees.com>
@@ -46,9 +47,6 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
 
     const DISCOUNT_PERCENTAGE = 'percentage';
     const DISCOUNT_AMOUNT = 'amount';
-
-    const PAYMENT_METDHOD_CASH = 'CASH';
-    const PAYMENT_METDHOD_CREDIT_CARD = 'CREDIT_CARD';
 
     /**
      * @var TbPOS
@@ -94,7 +92,6 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      * @return JSendResponse
      *
      * @throws PrestaShopException
-     * @throws SmartyException
      */
     protected function processRequest(Factory $factory): JSendResponse
     {
@@ -132,7 +129,6 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      * @throws ForbiddenException
      * @throws InvalidRequestException
      * @throws PrestaShopException
-     * @throws SmartyException
      */
     protected function dispatch(Factory $factory, string $url): JSendResponse
     {
@@ -168,10 +164,22 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             );
         }
 
+        if ($url === 'orders/new') {
+            $this->ensureMethod(static::METHOD_POST);
+            $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
+            return $this->processOrderNew($factory, $token, $this->getOrderProcess($token));
+        }
+
+        if ($url === 'orders/cancel') {
+            $this->ensureMethod(static::METHOD_POST);
+            $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
+            return $this->processOrderCancel($factory, $token, $this->getOrderProcess($token));
+        }
+
         if ($url === 'orders/current'){
             $this->ensureMethod(static::METHOD_GET);
             $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
-            return $this->processOrderIntrospection($this->getCart($token));
+            return $this->processOrderIntrospection($this->getOrderProcess($token));
         }
 
         if ($url === 'orders/add-product-to-order') {
@@ -180,7 +188,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             $body = $this->getBody();
             return $this->processAddProductToOrder(
                 $factory,
-                $this->getCart($token),
+                $this->getOrderProcess($token),
                 (string)$this->getParameter('refcode', $body),
                 (int)$this->getParameter('quantity', $body)
             );
@@ -192,7 +200,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             $body = $this->getBody();
             return $this->processChangeProductQuantity(
                 $factory,
-                $this->getCart($token),
+                $this->getOrderProcess($token),
                 (string)$this->getParameter('refcode', $body),
                 (int)$this->getParameter('quantity', $body)
             );
@@ -204,7 +212,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             $body = $this->getBody();
             return $this->processDeleteProductFromOrder(
                 $factory,
-                $this->getCart($token),
+                $this->getOrderProcess($token),
                 (string)$this->getParameter('refcode', $body)
             );
         }
@@ -216,7 +224,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             return $this->processApplyDiscount(
                 $factory,
                 $token->getEmployee(),
-                $this->getCart($token),
+                $this->getOrderProcess($token),
                 $this->toDiscountType((string)$this->getParameter('discount_type', $body), 'discount_type'),
                 Tools::parseNumber($this->getParameter('value', $body))
             );
@@ -228,7 +236,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             $body = $this->getBody();
             return $this->processCheckout(
                 $factory,
-                $this->getCart($token),
+                $this->getOrderProcess($token),
                 $this->toPaymentMethod((string)$this->getParameter('paymentMethod', $body), 'paymentMethod'),
             );
         }
@@ -239,8 +247,17 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             $body = $this->getBody();
             return $this->processPaymentCash(
                 $factory,
-                $this->getCart($token),
-                Tools::parseNumber($this->getParameter('amount', $body), 'amount'),
+                $this->getOrderProcess($token),
+                Tools::parseNumber($this->getParameter('amount', $body)),
+            );
+        }
+
+        if ($url === 'payment/await') {
+            $this->ensureMethod(static::METHOD_GET);
+            $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
+            return $this->processAwaitPayment(
+                $factory,
+                $this->getOrderProcess($token)
             );
         }
 
@@ -270,14 +287,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      */
     protected function ensureAccess(array $allowedRoles): Token
     {
-        $value = trim($_SERVER['HTTP_AUTHORIZATION'] ?? '');
-        if (! $value) {
-            throw new AccessDeniedException("Token required");
-        }
-        $token = Token::getFromAuthHeader($value);
-        if (! $token) {
-            throw new AccessDeniedException("Invalid token");
-        }
+        $token = $this->getTokenFromAuthHeader();
 
         $allowedRoles[] = Role::ROLE_ADMIN;
         $allowedRoles = array_unique($allowedRoles);
@@ -297,41 +307,20 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
 
     /**
      * @param Token $token
-     *
-     * @return Cart
-     *
+     * @return OrderProcess
      * @throws PrestaShopException
      */
-    protected function getCart(Token $token): Cart
+    protected function getOrderProcess(Token $token): OrderProcess
     {
+        $service = $this->module->getFactory()->getOrderProcessService();
+        $orderProcess = $service->getFromToken($token);
+
+        // update context
+        $cart = $orderProcess->getCart();
         $context = Context::getContext();
-        $cartId = $token->getCartId();
-        $carrier = Carrier::getCarrierByReference((int)Configuration::get("TBPOS_CARRIER"));
-        $carrierId = $carrier ? (int)$carrier->id : 0;
+        $context->cart = $cart;
 
-        if (! $cartId) {
-            // TODO: extract
-            $cart = new Cart();
-            $cart->id_currency = (int)Configuration::get('PS_CURRENCY_DEFAULT');
-            $cart->id_customer = 0;
-            $cart->id_carrier = $carrierId;
-            $cart->secure_key = md5(Tools::passwdGen(32));
-            $cart->save();
-            $token->updateCartId($cart->id);
-            $context->cart = $cart;
-        } else {
-            if ((int)$context->cart->id !== $cartId) {
-                $context->cart = new Cart($cartId);
-            }
-
-        }
-
-        if ((int)$context->cart->id_carrier !== $carrierId) {
-            $context->cart->id_carrier = $carrierId;
-            $context->cart->save();
-        }
-
-        return $context->cart;
+        return $orderProcess;
     }
 
     /**
@@ -420,62 +409,68 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      */
     private function processGetProductByReference(Factory $factory, string $reference):  SkuResponse|NotFoundResponse
     {
-        try {
-            $sku = $factory->getSKUService()->getByReference($reference);
-            return new SkuResponse($sku);
-        } catch (NotFoundException $e) {
-            return new NotFoundResponse($e->getMessage());
+        $sku = $factory->getSKUService()->findByReference($reference);
+        if (! $sku) {
+            return new NotFoundResponse("SKU with reference code '$reference' not found");
         }
+        return new SkuResponse($sku);
     }
 
     /**
      * @param Factory $factory
-     * @param Cart $cart
+     * @param OrderProcess $orderProcess
      * @param string $refcode
      * @param int $quantity
      *
-     * @return OrderResponse|NotFoundResponse|BadRequestResponse|OutOfStockResponse|MinimalQuantityRequiredResponse
+     * @return OrderProcessResponse|NotFoundResponse|BadRequestResponse|OutOfStockResponse|MinimalQuantityRequiredResponse
      * @throws PrestaShopException
      */
-    private function processAddProductToOrder(Factory $factory, Cart $cart, string $refcode, int $quantity)
-        : OrderResponse
+    private function processAddProductToOrder(Factory $factory, OrderProcess $orderProcess, string $refcode, int $quantity)
+        : OrderProcessResponse
         | NotFoundResponse
         | BadRequestResponse
         | OutOfStockResponse
         | MinimalQuantityRequiredResponse
     {
+        if (! $orderProcess->canBeModified()) {
+            return new BadRequestResponse("Order process can't be modified. Current status: " . $orderProcess->getStatus());
+        }
         $sku = $factory->getSKUService()->findByReference($refcode);
         if (! $sku) {
             return new NotFoundResponse("SKU with reference code '$refcode' not found");
         }
         $currentQuantity = 0;
+        $cart = $orderProcess->getCart();
         foreach ($cart->getProducts() as $item) {
             if ((int)$item['id_product'] === $sku->productId && (int)$item['id_combination'] === $sku->combinationId) {
                 $currentQuantity += (int)$item['quantity'];
             }
         }
         $newQuantity = $currentQuantity + $quantity;
-        return $this->processChangeProductQuantity($factory, $cart, $refcode, $newQuantity);
+        return $this->processChangeProductQuantity($factory, $orderProcess, $refcode, $newQuantity);
     }
 
     /**
      * @param Factory $factory
-     * @param Cart $cart
+     * @param OrderProcess $orderProcess
      * @param string $refcode
      * @param int $quantity
      *
      *
-     * @return OrderResponse|NotFoundResponse|BadRequestResponse|OutOfStockResponse|MinimalQuantityRequiredResponse
+     * @return OrderProcessResponse|NotFoundResponse|BadRequestResponse|OutOfStockResponse|MinimalQuantityRequiredResponse
      *
      * @throws PrestaShopException
      */
-    private function processChangeProductQuantity(Factory $factory, Cart $cart, string $refcode, int $quantity)
-        : OrderResponse
+    private function processChangeProductQuantity(Factory $factory, OrderProcess $orderProcess, string $refcode, int $quantity)
+        : OrderProcessResponse
         | NotFoundResponse
         | BadRequestResponse
         | OutOfStockResponse
         | MinimalQuantityRequiredResponse
     {
+        if (! $orderProcess->canBeModified()) {
+           return new BadRequestResponse("Order process can't be modified. Current status: " . $orderProcess->getStatus());
+        }
         $sku = $factory->getSKUService()->findByReference($refcode);
         if (! $sku) {
             return new NotFoundResponse("SKU with reference code '$refcode' not found");
@@ -485,6 +480,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             return new BadRequestResponse("Quantity can't be negative");
         }
 
+        $cart = $orderProcess->getCart();
         $currentQuantity = 0;
         foreach ($cart->getProducts() as $item) {
             if ((int)$item['id_product'] === $sku->productId && (int)$item['id_combination'] === $sku->combinationId) {
@@ -513,26 +509,32 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             }
             return new MinimalQuantityRequiredResponse($sku, $minimalQty);
         }
-        return new OrderResponse($cart);
+        return new OrderProcessResponse($orderProcess);
     }
 
     /**
      * @param Factory $factory
-     * @param Cart $cart
+     * @param OrderProcess $orderProcess
      * @param string $refcode
      *
-     * @return OrderResponse|NotFoundResponse
+     * @return OrderProcessResponse|NotFoundResponse|BadRequestResponse
      *
-     * @throws OrderResponse
+     * @throws OrderProcessResponse
      * @throws PrestaShopException
      */
-    private function processDeleteProductFromOrder(Factory $factory, Cart $cart, string $refcode): OrderResponse|NotFoundResponse
+    private function processDeleteProductFromOrder(Factory $factory, OrderProcess $orderProcess, string $refcode)
+        : OrderProcessResponse
+        | NotFoundResponse
+        | BadRequestResponse
     {
-        try {
-            $sku = $factory->getSKUService()->getByReference($refcode);
-        } catch (NotFoundException $e) {
-            return new NotFoundResponse($e->getMessage());
+        if (! $orderProcess->canBeModified()) {
+            return new BadRequestResponse("Order process can't be modified. Current status: " . $orderProcess->getStatus());
         }
+        $sku = $factory->getSKUService()->findByReference($refcode);
+        if (! $sku) {
+            return new NotFoundResponse("SKU with reference code '$refcode' not found");
+        }
+        $cart = $orderProcess->getCart();
         $quantity = 0;
         foreach ($cart->getProducts() as $item) {
             if ((int)$item['id_product'] === $sku->productId && (int)$item['id_combination'] === $sku->combinationId) {
@@ -542,17 +544,17 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         if ($quantity > 0) {
             $cart->updateQty($quantity, $sku->productId, $sku->combinationId, 0, 'down');
         }
-        return new OrderResponse($cart);
+        return new OrderProcessResponse($orderProcess);
     }
 
     /**
-     * @param Cart $cart
+     * @param OrderProcess $orderProcess
      *
-     * @return OrderResponse
+     * @return OrderProcessResponse
      */
-    private function processOrderIntrospection(Cart $cart): OrderResponse
+    private function processOrderIntrospection(OrderProcess $orderProcess): OrderProcessResponse
     {
-        return new OrderResponse($cart);
+        return new OrderProcessResponse($orderProcess);
     }
 
     /**
@@ -579,6 +581,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      * @param Token $token
      *
      * @return JSendResponse
+     * @throws PrestaShopException
      */
     private function processTokenIntrospection(Factory $factory, Token $token): JSendResponse
     {
@@ -589,16 +592,23 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
     /**
      * @param Factory $factory
      * @param Employee $employee
-     * @param Cart $cart
+     * @param OrderProcess $orderProcess
      * @param string $discountType
      * @param float $value
      *
-     * @return OrderResponse
+     * @return OrderProcessResponse|BadRequestResponse
      *
      * @throws PrestaShopException
      */
-    private function processApplyDiscount(Factory $factory, Employee $employee, Cart $cart, string $discountType, float $value): OrderResponse
+    private function processApplyDiscount(Factory $factory, Employee $employee, OrderProcess $orderProcess, string $discountType, float $value)
+        : OrderProcessResponse
+        | BadRequestResponse
     {
+        if (! $orderProcess->canBeModified()) {
+            return new BadRequestResponse("Order process can't be modified. Current status: " . $orderProcess->getStatus());
+        }
+
+        $cart = $orderProcess->getCart();
         $cartId = (int)$cart->id;
         $orderLevelPrefix = "POS_{$cartId}_";
         $cartRule = $this->findOrderDiscountCartRule($cart->getCartRules(), $orderLevelPrefix);
@@ -639,53 +649,82 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         }
         $cartRule->save();
         $cart->addCartRule((int)$cartRule->id);
-        return new OrderResponse($cart);
+        return new OrderProcessResponse($orderProcess);
     }
 
     /**
      * @param Factory $factory
-     * @param Cart $cart
-     * @param string $paymentMethod
+     * @param OrderProcess $orderProcess
+     * @param PaymentMethod $paymentMethod
      *
-     * @return CollectCashResponse|BadRequestResponse
-     */
-    private function processCheckout(Factory $factory, Cart $cart, string $paymentMethod)
-        : CollectCashResponse
-        | BadRequestResponse
-    {
-        switch ($paymentMethod) {
-            case static::PAYMENT_METDHOD_CASH:
-                return new CollectCashResponse($cart);
-            case static::PAYMENT_METDHOD_CREDIT_CARD:
-                throw new RuntimeException("Not implemented yet");
-            default:
-                return new BadRequestResponse("Unknown payment method: $paymentMethod");
-        }
-    }
-
-    /**
-     * @param Factory $factory
-     * @param Cart $cart
-     * @param float $amount
-     *
-     * @return InvalidAmountCollectedResponse|CashPaymentResponse
+     * @return OrderProcessResponse|BadRequestResponse
      *
      * @throws PrestaShopException
-     * @throws SmartyException
      */
-    private function processPaymentCash(Factory $factory, Cart $cart, float $amount)
-        : InvalidAmountCollectedResponse
-        | CashPaymentResponse
+    private function processCheckout(Factory $factory, OrderProcess $orderProcess, PaymentMethod $paymentMethod)
+        : OrderProcessResponse
+        | BadRequestResponse
     {
-        $amount = Tools::roundPrice($amount);
-        $total = Tools::roundPrice($cart->getOrderTotal());
-        if ($amount !== $total) {
-            return new InvalidAmountCollectedResponse($amount, $cart);
+        if (! $orderProcess->canTransitionTo(OrderProcess::STATUS_PROCESSING_PAYMENT)) {
+            return new BadRequestResponse("Can't start checkout process, current status: " . $orderProcess->getStatus());
         }
-        $order = $this->createOrder($cart, $amount, static::PAYMENT_METDHOD_CASH);
-        return new CashPaymentResponse($order);
+
+        if (! $orderProcess->getCart()->getProducts()) {
+            return new BadRequestResponse("Empty cart");
+        }
+
+        $orderProcessService = $factory->getOrderProcessService();
+
+        $orderProcess = $orderProcessService->startPayment($orderProcess, $paymentMethod);
+        return new OrderProcessResponse($orderProcess);
     }
 
+    /**
+     * @param Factory $factory
+     * @param OrderProcess $orderProcess
+     * @param float $amount
+     *
+     * @return InvalidAmountCollectedResponse|BadRequestResponse
+     *
+     * @throws PrestaShopException
+     */
+    private function processPaymentCash(Factory $factory, OrderProcess $orderProcess, float $amount)
+        : InvalidAmountCollectedResponse
+        | BadRequestResponse
+        | OrderProcessResponse
+    {
+        $paymentMethod = $orderProcess->getPaymentMethod();
+        if (! $paymentMethod) {
+            return new BadRequestResponse("Can't process cash payment. Payment method was not selected yet");
+        }
+        if ($paymentMethod->getId() !== CashPaymentMethod::TYPE) {
+            return new BadRequestResponse("Can't process cash payment. Selected payment method is " . $paymentMethod->getId());
+        }
+
+        if (! $orderProcess->canTransitionTo(OrderProcess::STATUS_COMPLETED)) {
+            return new BadRequestResponse("Can't process payment. Current status: " . $orderProcess->getStatus());
+        }
+
+        $amount = Tools::roundPrice($amount);
+        $total = Tools::roundPrice($orderProcess->getCart()->getOrderTotal());
+        if ($amount !== $total) {
+            return new InvalidAmountCollectedResponse($amount, $total);
+        }
+        $orderProcessService = $this->module->getFactory()->getOrderProcessService();
+        $orderProcess = $orderProcessService->acceptPayment($orderProcess, $paymentMethod, $amount, []);
+        return new OrderProcessResponse($orderProcess);
+    }
+
+    /**
+     * @param Factory $factory
+     * @param OrderProcess $orderProcess
+     *
+     * @return OrderProcessResponse
+     */
+    private function processAwaitPayment(Factory $factory, OrderProcess $orderProcess) : OrderProcessResponse
+    {
+        return new OrderProcessResponse($orderProcess);
+    }
 
     /**
      * @param array $cartRules
@@ -724,24 +763,22 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         throw new InvalidRequestException("Invalid value for parameter '$paramName'");
     }
 
-
     /**
      * @param string $param
      * @param string $paramName
      *
-     * @return string
+     * @return PaymentMethod
      *
      * @throws InvalidRequestException
      */
-    private function toPaymentMethod(string $param, string $paramName): string
+    private function toPaymentMethod(string $param, string $paramName): PaymentMethod
     {
-        switch (strtoupper($param)) {
-            case static::PAYMENT_METDHOD_CASH:
-                return static::PAYMENT_METDHOD_CASH;
-            case static::PAYMENT_METDHOD_CREDIT_CARD:
-                return static::PAYMENT_METDHOD_CREDIT_CARD;
+        $methods = $this->module->getFactory()->getPaymentMethods();
+        $method = $methods->findMethod($param);
+        if (! $method) {
+            throw new InvalidRequestException("Invalid value for parameter '$paramName'");
         }
-        throw new InvalidRequestException("Invalid value for parameter '$paramName'");
+        return $method;
     }
 
     /**
@@ -760,31 +797,67 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         }
     }
 
+
     /**
-     * @param Cart $cart
-     * @param float $amount
-     * @param string $paymentMethod
-     * @return Order
+     * @return Token
      *
+     * @throws AccessDeniedException
      * @throws PrestaShopException
-     * @throws SmartyException
      */
-    private function createOrder(Cart $cart, float $amount, string $paymentMethod): Order
+    private function getTokenFromAuthHeader(): Token
     {
-        if ($this->module->validateOrder(
-            $cart->id,
-            Configuration::get('PS_OS_BANKWIRE'),
-            $amount,
-            $this->module->displayName,
-            null,
-            [],
-            (int) $cart->id_currency,
-            false,
-            $cart->secure_key
-        )) {
-            return new Order($this->module->currentOrder);
+        $headerValue = trim($_SERVER['HTTP_AUTHORIZATION'] ?? '');
+        if (! $headerValue) {
+            throw new AccessDeniedException("Token required");
         }
-        throw new RuntimeException("Failed to create order");
+
+        $tokenValue = preg_replace("/^Bearer +/i", "", $headerValue);
+        if (!$tokenValue) {
+            throw new AccessDeniedException("Token value required");
+        }
+
+        $token = $this->module->getFactory()->authService()->findToken($tokenValue);
+        if (! $token) {
+            throw new AccessDeniedException("Invalid token");
+        }
+        return $token;
+    }
+
+    /**
+     * @param Factory $factory
+     * @param Token $token
+     * @param OrderProcess $orderProcess
+     * @return OrderProcessResponse
+     * @throws PrestaShopException
+     */
+    private function processOrderNew(Factory $factory, Token $token ,OrderProcess $orderProcess)
+        : BadRequestResponse
+        | OrderProcessResponse
+    {
+        if ($orderProcess->getStatus() === OrderProcess::STATUS_COMPLETED) {
+            $orderProcessService = $factory->getOrderProcessService();
+            return new OrderProcessResponse($orderProcessService->createOrderProcess($token));
+        }
+        return new BadRequestResponse("Cant create new order process, current process is not completed. Status: " . $orderProcess->getStatus());
+    }
+
+    /**
+     * @param Factory $factory
+     * @param Token $token
+     * @param OrderProcess $orderProcess
+     * @return OrderProcessResponse
+     * @throws PrestaShopException
+     */
+    private function processOrderCancel(Factory $factory, Token $token , OrderProcess $orderProcess)
+        : BadRequestResponse
+        | OrderProcessResponse
+    {
+        if ($orderProcess->canTransitionTo(OrderProcess::STATUS_CANCELED)) {
+            $orderProcessService = $factory->getOrderProcessService();
+            $orderProcessService->changeStatus($orderProcess, OrderProcess::STATUS_CANCELED);
+            return new OrderProcessResponse($orderProcessService->createOrderProcess($token));
+        }
+        return new BadRequestResponse("Cant cancel order process. Status: " . $orderProcess->getStatus());
     }
 
 }

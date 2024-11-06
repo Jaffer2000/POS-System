@@ -14,8 +14,12 @@
 
 namespace Thirtybees\Module\POS\DependencyInjection;
 
+use TbPOS;
 use Thirtybees\Module\POS\Auth\Service\AuthService;
 use Thirtybees\Module\POS\Auth\Service\AuthServiceImpl;
+use Thirtybees\Module\POS\OrderProcess\Service\OrderProcessService;
+use Thirtybees\Module\POS\OrderProcess\Service\OrderProcessServiceImpl;
+use Thirtybees\Module\POS\Payment\PaymentMethods;
 use Thirtybees\Module\POS\Sku\Service\SkuService;
 use Thirtybees\Module\POS\Sku\Service\SkuServiceImpl;
 
@@ -26,14 +30,33 @@ class Factory
      */
     private SkuService $skuService;
 
+    /**
+     * @var AuthService|AuthServiceImpl
+     */
     private AuthService  $authService;
 
     /**
+     * @var OrderProcessService
      */
-    public function __construct()
+    private OrderProcessService $orderProcessService;
+
+    /**
+     * @var PaymentMethods
+     */
+    private PaymentMethods $paymentMethods;
+
+    /**
+     */
+    public function __construct(TbPOS $module)
     {
+        $this->paymentMethods = new PaymentMethods();
         $this->skuService = new SkuServiceImpl();
         $this->authService = new AuthServiceImpl();
+        $this->orderProcessService = new OrderProcessServiceImpl(
+            $module,
+            $this->authService,
+            $this->paymentMethods
+        );
     }
 
     /**
@@ -50,6 +73,22 @@ class Factory
     public function authService(): AuthService
     {
         return $this->authService;
+    }
+
+    /**
+     * @return OrderProcessService
+     */
+    public function getOrderProcessService(): OrderProcessService
+    {
+        return $this->orderProcessService;
+    }
+
+    /**
+     * @return PaymentMethods
+     */
+    public function getPaymentMethods(): PaymentMethods
+    {
+        return $this->paymentMethods;
     }
 
 }
