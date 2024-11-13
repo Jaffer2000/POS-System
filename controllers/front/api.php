@@ -7,12 +7,14 @@ use Thirtybees\Module\POS\Api\Response\BadRequestResponse;
 use Thirtybees\Module\POS\Api\Response\ForbiddenResponse;
 use Thirtybees\Module\POS\Api\Response\GetSkuListResponse;
 use Thirtybees\Module\POS\Api\Response\InvalidAmountCollectedResponse;
+use Thirtybees\Module\POS\Api\Response\InvalidOrderStatusResponse;
 use Thirtybees\Module\POS\Api\Response\JSendErrorResponse;
 use Thirtybees\Module\POS\Api\Response\JSendResponse;
 use Thirtybees\Module\POS\Api\Response\MinimalQuantityRequiredResponse;
 use Thirtybees\Module\POS\Api\Response\NotFoundResponse;
 use Thirtybees\Module\POS\Api\Response\OrderProcessResponse;
 use Thirtybees\Module\POS\Api\Response\OutOfStockResponse;
+use Thirtybees\Module\POS\Api\Response\PrintReceiptResponse;
 use Thirtybees\Module\POS\Api\Response\SkuResponse;
 use Thirtybees\Module\POS\Api\Response\UserResponse;
 use Thirtybees\Module\POS\Auth\Model\Role;
@@ -191,6 +193,15 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
                 $this->getOrderProcess($token),
                 (string)$this->getParameter('refcode', $body),
                 (int)$this->getParameter('quantity', $body)
+            );
+        }
+
+        if ($url === 'orders/print-receipt') {
+            $this->ensureMethod(static::METHOD_POST);
+            $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
+            return $this->processPrintReceipt(
+                $factory,
+                $this->getOrderProcess($token)
             );
         }
 
@@ -858,6 +869,24 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             return new OrderProcessResponse($orderProcessService->createOrderProcess($token));
         }
         return new BadRequestResponse("Cant cancel order process. Status: " . $orderProcess->getStatus());
+    }
+
+    /**
+     * @param Factory $factory
+     * @param OrderProcess $orderProcess
+     * @return InvalidOrderStatusResponse|PrintReceiptResponse
+     */
+    private function processPrintReceipt(Factory $factory, OrderProcess $orderProcess)
+        : InvalidOrderStatusResponse
+        | PrintReceiptResponse
+    {
+        if ($orderProcess->getStatus() === OrderProcess::STATUS_COMPLETED) {
+            $printerId = 'PRINTER_1';
+            // TODO: implement print
+            return new PrintReceiptResponse($printerId);
+        } else {
+            return new InvalidOrderStatusResponse(OrderProcess::STATUS_COMPLETED, $orderProcess->getStatus());
+        }
     }
 
 }
