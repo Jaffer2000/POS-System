@@ -920,7 +920,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             $orderProcessService->changeStatus($orderProcess, OrderProcess::STATUS_CANCELED);
             return new OrderProcessResponse($orderProcessService->createOrderProcess($token));
         }
-        return new BadRequestResponse("Cant cancel order process. Status: " . $orderProcess->getStatus());
+        return new BadRequestResponse("Can't cancel order process. Status: " . $orderProcess->getStatus());
     }
 
     /**

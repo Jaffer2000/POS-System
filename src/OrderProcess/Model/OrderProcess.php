@@ -84,7 +84,8 @@ class OrderProcess
             ],
             static::STATUS_PROCESSING_PAYMENT => [
                 static::STATUS_COMPLETED,
-                static::STATUS_PAYMENT_FAILED
+                static::STATUS_PAYMENT_FAILED,
+                static::STATUS_CANCELED
             ],
             static::STATUS_PAYMENT_FAILED => [
                 static::STATUS_ACTIVE
