@@ -2,11 +2,13 @@
 
 namespace Thirtybees\Module\POS\Payment\Method;
 
+use PrestaShopException;
 use Thirtybees\Module\POS\OrderProcess\Model\OrderProcess;
+use Tools;
 
-class CreditCartPaymentMethod implements PaymentMethod
+class CreditCardOfflinePaymentMethod implements PaymentMethod
 {
-    const TYPE = 'CREDIT_CARD';
+    const TYPE = 'CREDIT_CARD_OFFLINE';
 
     /**
      * @return string
@@ -19,11 +21,13 @@ class CreditCartPaymentMethod implements PaymentMethod
     /**
      * @param OrderProcess $orderProcess
      * @return string[]
+     * @throws PrestaShopException
      */
     public function getActionData(OrderProcess $orderProcess): array
     {
         return [
-            'action' => 'AWAIT_PAYMENT_RESULT'
+            'action' => 'CAPTURE_CARD_PAYMENT',
+            'amount' => Tools::roundPrice($orderProcess->getCart()->getOrderTotal()),
         ];
     }
 }

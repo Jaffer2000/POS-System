@@ -3,8 +3,10 @@
 namespace Thirtybees\Module\POS\Payment;
 
 use Thirtybees\Module\POS\Exception\NotFoundException;
+use Thirtybees\Module\POS\OrderProcess\Model\OrderProcess;
 use Thirtybees\Module\POS\Payment\Method\CashPaymentMethod;
-use Thirtybees\Module\POS\Payment\Method\CreditCartPaymentMethod;
+use Thirtybees\Module\POS\Payment\Method\CreditCardOfflinePaymentMethod;
+use Thirtybees\Module\POS\Payment\Method\CreditCardOnlinePaymentMethod;
 use Thirtybees\Module\POS\Payment\Method\PaymentMethod;
 
 class PaymentMethods
@@ -16,7 +18,8 @@ class PaymentMethods
     {
         return [
             CashPaymentMethod::TYPE => new CashPaymentMethod(),
-            CreditCartPaymentMethod::TYPE => new CreditCartPaymentMethod(),
+            CreditCardOfflinePaymentMethod::TYPE => new CreditCardOfflinePaymentMethod(),
+            CreditCardOnlinePaymentMethod::TYPE => new CreditCardOnlinePaymentMethod(),
         ];
     }
 
@@ -45,5 +48,15 @@ class PaymentMethods
             return $methods[$paymentMethodId];
         }
         return null;
+    }
+
+    /**
+     * @param OrderProcess $orderProcess
+     * @return PaymentMethod[]
+     */
+    public function getMethodsAvailableForOrderProcess(OrderProcess $orderProcess): array
+    {
+        // TODO
+        return $this->getMethods();
     }
 }

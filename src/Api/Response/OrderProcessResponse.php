@@ -45,6 +45,7 @@ class OrderProcessResponse extends JSendSuccessResponse
         switch ($status) {
             case OrderProcess::STATUS_ACTIVE:
                 $data = $this->addCartData($data, $this->orderProcess->getCart());
+                $data = $this->addPaymentMethods($factory, $data);
                 return $data;
             case OrderProcess::STATUS_PROCESSING_PAYMENT:
                 $data = $this->addCartData($data, $this->orderProcess->getCart());
@@ -57,6 +58,7 @@ class OrderProcessResponse extends JSendSuccessResponse
                 return $data;
             case OrderProcess::STATUS_PAYMENT_FAILED:
                 $data = $this->addCartData($data, $this->orderProcess->getCart());
+                $data = $this->addPaymentMethods($factory, $data);
                 return $data;
             default:
                 throw new ServerErrorException("Invalid order process status: " . $status);
@@ -134,6 +136,22 @@ class OrderProcessResponse extends JSendSuccessResponse
         ];
         $paymentInfo = array_merge($paymentInfo, $method->getActionData($this->orderProcess));
         $data['payment'] = $paymentInfo;
+        return $data;
+    }
+
+    /**
+     * @param Factory $factory
+     * @param array $data
+     * @return array
+     */
+    private function addPaymentMethods(Factory $factory, array $data)
+    {
+        $methods = $factory->getPaymentMethods()->getMethodsAvailableForOrderProcess($this->orderProcess);
+        $paymentMethods = [];
+        foreacH ($methods as $method) {
+            $paymentMethods[] = $method->getId();
+        }
+        $data['availablePaymentMethods'] = $paymentMethods;
         return $data;
     }
 

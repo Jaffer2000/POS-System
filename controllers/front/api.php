@@ -26,6 +26,7 @@ use Thirtybees\Module\POS\Exception\InvalidRequestException;
 use Thirtybees\Module\POS\Exception\NotFoundException;
 use Thirtybees\Module\POS\OrderProcess\Model\OrderProcess;
 use Thirtybees\Module\POS\Payment\Method\CashPaymentMethod;
+use Thirtybees\Module\POS\Payment\Method\CreditCardOfflinePaymentMethod;
 use Thirtybees\Module\POS\Payment\Method\PaymentMethod;
 
 /**
@@ -257,6 +258,17 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
             $body = $this->getBody();
             return $this->processPaymentCash(
+                $factory,
+                $this->getOrderProcess($token),
+                Tools::parseNumber($this->getParameter('amount', $body)),
+            );
+        }
+
+        if ($url === 'payment/card') {
+            $this->ensureMethod(static::METHOD_POST);
+            $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
+            $body = $this->getBody();
+            return $this->processPaymentCardOffline(
                 $factory,
                 $this->getOrderProcess($token),
                 Tools::parseNumber($this->getParameter('amount', $body)),
@@ -684,6 +696,10 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             return new BadRequestResponse("Empty cart");
         }
 
+        if (! $this->checkPaymentMethodAvailable($factory, $orderProcess, $paymentMethod)) {
+            return new BadRequestResponse("Payment method ".$paymentMethod->getId()." is not allowed");
+        }
+
         $orderProcessService = $factory->getOrderProcessService();
 
         $orderProcess = $orderProcessService->startPayment($orderProcess, $paymentMethod);
@@ -714,6 +730,42 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
 
         if (! $orderProcess->canTransitionTo(OrderProcess::STATUS_COMPLETED)) {
             return new BadRequestResponse("Can't process payment. Current status: " . $orderProcess->getStatus());
+        }
+
+        $amount = Tools::roundPrice($amount);
+        $total = Tools::roundPrice($orderProcess->getCart()->getOrderTotal());
+        if ($amount !== $total) {
+            return new InvalidAmountCollectedResponse($amount, $total);
+        }
+        $orderProcessService = $this->module->getFactory()->getOrderProcessService();
+        $orderProcess = $orderProcessService->acceptPayment($orderProcess, $paymentMethod, $amount, []);
+        return new OrderProcessResponse($orderProcess);
+    }
+
+    /**
+     * @param Factory $factory
+     * @param OrderProcess $orderProcess
+     * @param float $amount
+     *
+     * @return InvalidAmountCollectedResponse|BadRequestResponse
+     *
+     * @throws PrestaShopException
+     */
+    private function processPaymentCardOffline(Factory $factory, OrderProcess $orderProcess, float $amount)
+        : InvalidAmountCollectedResponse
+        | BadRequestResponse
+        | OrderProcessResponse
+    {
+        $paymentMethod = $orderProcess->getPaymentMethod();
+        if (! $paymentMethod) {
+            return new BadRequestResponse("Can't process offline card payment. Payment method was not selected yet");
+        }
+        if ($paymentMethod->getId() !== CreditCardOfflinePaymentMethod::TYPE) {
+            return new BadRequestResponse("Can't process offline card payment. Selected payment method is " . $paymentMethod->getId());
+        }
+
+        if (! $orderProcess->canTransitionTo(OrderProcess::STATUS_COMPLETED)) {
+            return new BadRequestResponse("Can't process offline card payment. Current status: " . $orderProcess->getStatus());
         }
 
         $amount = Tools::roundPrice($amount);
@@ -887,6 +939,24 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         } else {
             return new InvalidOrderStatusResponse(OrderProcess::STATUS_COMPLETED, $orderProcess->getStatus());
         }
+    }
+
+    /**
+     * @param Factory $factory
+     * @param OrderProcess $orderProcess
+     * @param PaymentMethod $paymentMethod
+     * @return bool
+     */
+    public function checkPaymentMethodAvailable(Factory $factory, OrderProcess $orderProcess, PaymentMethod $paymentMethod): bool
+    {
+        $availableMethods = $factory->getPaymentMethods()->getMethodsAvailableForOrderProcess($orderProcess);
+
+        foreach ($availableMethods as $method) {
+            if ($method->getId() === $paymentMethod->getId()) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }
