@@ -48,4 +48,12 @@ interface OrderProcessService
      * @throws PrestaShopException
      */
     public function acceptPayment(OrderProcess $orderProcess, PaymentMethod $paymentMethod, float $amount, array $paymentMethodData): OrderProcess;
+
+    /**
+     * @param OrderProcess $orderProcess
+     *
+     * @return OrderProcess
+     * @throws PrestaShopException
+     */
+    public function cancelPayment(OrderProcess $orderProcess);
 }

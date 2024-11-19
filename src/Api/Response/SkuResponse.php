@@ -5,7 +5,8 @@ namespace Thirtybees\Module\POS\Api\Response;
 use PrestaShopException;
 use Product;
 use Thirtybees\Module\POS\DependencyInjection\Factory;
-use Thirtybees\Module\POS\Sku\Model\Sku;;
+use Thirtybees\Module\POS\Sku\Model\Sku;
+use Thirtybees\Module\POS\Utils;
 
 /**
  *
@@ -40,8 +41,7 @@ class SkuResponse extends JSendSuccessResponse
             'product_id' => $this->sku->getSkuId(),
             'price_tax_excl' => Product::getPriceStatic($this->sku->productId, false, $this->sku->combinationId),
             'price_tax_incl' => Product::getPriceStatic($this->sku->productId, true, $this->sku->combinationId),
-            'image_url' => $this->sku->imageUrl,
+            'image_url' => Utils::getProductImageUrl($this->sku->productId, $this->sku->productId, $this->sku->rewrite),
         ];
     }
-
 }

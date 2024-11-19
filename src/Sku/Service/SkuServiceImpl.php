@@ -14,20 +14,14 @@
 
 namespace Thirtybees\Module\POS\Sku\Service;
 
-use Configuration;
 use Context;
 use Db;
 use DbQuery;
-use ImageType;
-use Module;
 use PrestaShopDatabaseException;
 use PrestaShopException;
-use Product;
-use Product as CoreProduct;
 use Shop;
 use Thirtybees\Module\POS\Exception\NotFoundException;
 use Thirtybees\Module\POS\Sku\Model\Sku;
-use Tools;
 
 class SkuServiceImpl implements SkuService
 {
@@ -128,11 +122,11 @@ class SkuServiceImpl implements SkuService
         $combinationId = 0;
         return new Sku(
             $productId,
-            $row['name'] ?? '',
+            (string)$row['name'],
             $combinationId,
             '',
-            $row['reference'],
-            $this->getProductImageUrl($productId, $combinationId, 'home', $row['link_rewrite']),
+            (string)$row['reference'],
+            (string)$row['link_rewrite']
         );
     }
 
@@ -165,11 +159,11 @@ class SkuServiceImpl implements SkuService
         }
         return new Sku(
             $productId,
-            $row['name'] ?? '',
+            (string)$row['name'],
             $combinationId,
-            $row['combination_name'] ?? '',
-            $row['reference'],
-            $this->getProductImageUrl($productId, $combinationId, 'home', $row['link_rewrite']),
+            (string)$row['combination_name'],
+            (string)$row['reference'],
+            (string)$row['link_rewrite']
         );
     }
 
@@ -199,11 +193,11 @@ class SkuServiceImpl implements SkuService
         $combinationId = 0;
         return new Sku(
             $productId,
-            $row['name'] ?? '',
+            (string)$row['name'],
             $combinationId,
             '',
-            $row['reference'],
-            $this->getProductImageUrl($productId, $combinationId, 'home', $row['link_rewrite']),
+            (string)$row['reference'],
+            (string)$row['link_rewrite']
         );
     }
 
@@ -236,11 +230,11 @@ class SkuServiceImpl implements SkuService
         $combinationId = (int)$row['id_product_attribute'];
         return new Sku(
             $productId,
-            $row['name'] ?? '',
+            (string)$row['name'],
             $combinationId,
-            $row['combination_name'] ?? '',
-            $row['reference'],
-            $this->getProductImageUrl($productId, $combinationId, 'home', $row['link_rewrite']),
+            (string)$row['combination_name'],
+            (string)$row['reference'],
+            (string)$row['link_rewrite']
         );
     }
 
@@ -270,93 +264,6 @@ class SkuServiceImpl implements SkuService
     }
 
     /**
-     * @param int $productId
-     * @param int $combinationId
-     * @param string $imageType
-     * @param string|null $rewrite
-     *
-     * @return string
-     * @throws PrestaShopException
-     */
-    public function getProductImageUrl(int $productId, int $combinationId, string $imageType, string $rewrite = null)
-    {
-        $idLang = (int)Context::getContext()->language->id;
-
-        $link = Context::getContext()->link;
-        $imageInfo = null;
-        if ($combinationId) {
-            $imageInfo = CoreProduct::getCombinationImageById($combinationId, $idLang);
-        }
-        if (! $imageInfo) {
-            $imageInfo = CoreProduct::getCover($productId);
-        }
-
-        $imageId = 0;
-        if ($imageInfo && isset($imageInfo['id_image'])) {
-            $imageId = (int)$imageInfo['id_image'];
-        }
-
-        if (is_null($rewrite) && $imageId) {
-            $rewrite = Db::getInstance()->getValue((new DbQuery())
-                ->select('link_rewrite')
-                ->from('product_lang')
-                ->where('id_product = ' . (int)$productId)
-                ->where('id_lang = ' . $idLang . Shop::addSqlRestrictionOnLang('pl'))
-            );
-        }
-
-        return $link->getImageLink($rewrite ?? '', $imageId, $this->getFormattedImageType($imageType));
-    }
-
-    /**
-     * @param string $imageType
-     * @return string
-     * @throws PrestaShopException
-     */
-    private static function getFormattedImageType($imageType)
-    {
-        $formattedType = ImageType::getFormatedName($imageType) ?? '';
-        if ($formattedType
-            && Module::isInstalled('watermark')
-            && Module::isEnabled('watermark')
-        ) {
-            $watermarkTypes = static::getWatermarkImageTypes();
-            if (isset($watermarkTypes[$formattedType])) {
-                return $watermarkTypes[$formattedType];
-            }
-        }
-        return $formattedType;
-    }
-
-    /**
-     * Returns product image types that are protected using watermark functionality
-     *
-     * @return array
-     * @throws PrestaShopException
-     */
-    private static function getWatermarkImageTypes()
-    {
-        static $watermarkTypes = null;
-        if (is_null($watermarkTypes)) {
-            $watermarkTypes = [];
-            $selectedTypes = Configuration::get('WATERMARK_TYPES');
-            if ($selectedTypes) {
-                $selectedTypes = array_map('intval', explode(',', $selectedTypes));
-                if ($selectedTypes) {
-                    $hash = Configuration::get('WATERMARK_HASH');
-                    foreach (ImageType::getImagesTypes('products') as $imageType) {
-                        if (in_array((int)$imageType['id_image_type'], $selectedTypes)) {
-                            $imageTypeName = $imageType['name'];
-                            $watermarkTypes[$imageTypeName] = $imageTypeName . '-' . $hash;
-                        }
-                    }
-                }
-            }
-        }
-        return $watermarkTypes;
-    }
-
-    /**
      * @return Sku[]
      *
      * @throws PrestaShopException
@@ -379,26 +286,14 @@ class SkuServiceImpl implements SkuService
             $combinationId = 0;
             return new Sku(
                 $productId,
-                $row['name'] ?? '',
+                (string)$row['name'],
                 $combinationId,
                 '',
-                $row['reference'],
-                $this->getProductImageUrl($productId, $combinationId, 'home', $row['link_rewrite']),
+                (string)$row['reference'],
+                (string)$row['link_rewrite']
             );
         }, $res);
     }
 
-    /**
-     * @param int $productId
-     * @param int $combinationId
-     *
-     * @return float
-     *
-     * @throws PrestaShopException
-     */
-    private function getProductPrice(int $productId, int $combinationId): float
-    {
-        return Tools::roundPrice(Product::getPriceStatic($productId, $combinationId));
-    }
 
 }

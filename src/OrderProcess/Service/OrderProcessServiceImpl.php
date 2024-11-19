@@ -134,6 +134,15 @@ class OrderProcessServiceImpl implements OrderProcessService
         return $this->changeStatus($orderProcess, OrderProcess::STATUS_COMPLETED);
     }
 
+    /**
+     * @param OrderProcess $orderProcess
+     * @return OrderProcess
+     * @throws PrestaShopException
+     */
+    public function cancelPayment(OrderProcess  $orderProcess): OrderProcess
+    {
+        return $this->changeStatus($orderProcess, OrderProcess::STATUS_ACTIVE);
+    }
 
     /**
      * @param Cart $cart

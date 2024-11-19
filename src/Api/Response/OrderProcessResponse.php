@@ -5,9 +5,11 @@ namespace Thirtybees\Module\POS\Api\Response;
 use Cart;
 use Order;
 use PrestaShopException;
+use Product;
 use Thirtybees\Module\POS\DependencyInjection\Factory;
 use Thirtybees\Module\POS\Exception\ServerErrorException;
 use Thirtybees\Module\POS\OrderProcess\Model\OrderProcess;
+use Thirtybees\Module\POS\Utils;
 use Tools;
 
 /**
@@ -82,12 +84,17 @@ class OrderProcessResponse extends JSendSuccessResponse
         $lines = [];
         $discounts = [];
         foreach ($cart->getProducts() as $product) {
+            $productId = (int)$product['id_product'];
+            $combinationId = (int)$product['id_product_attribute'];
+            $imageUrl = Utils::getProductImageUrl($productId, $combinationId, (string)$product['link_rewrite']);
             $lines[] = [
-                'product_id' => (int)$product['id_product'] . '/' . (int)$product['id_product_attribute'],
+                'product_id' => $productId . '/' . $combinationId,
                 'reference' => $product['reference'],
                 'name' => $product['name'],
-                'item_price' => (float)$product['price'],
                 'quantity' => (int)$product['quantity'],
+                'price_tax_excl' => Product::getPriceStatic($productId, false, $combinationId),
+                'price_tax_incl' => Product::getPriceStatic($productId, true, $combinationId),
+                'image_url' => $imageUrl,
             ];
         }
         foreach ($cart->getCartRules() as $rule) {

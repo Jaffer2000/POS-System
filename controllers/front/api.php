@@ -253,6 +253,15 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             );
         }
 
+        if ($url === 'payment/cancel') {
+            $this->ensureMethod(static::METHOD_POST);
+            $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
+            return $this->processPaymentCancel(
+                $factory,
+                $this->getOrderProcess($token)
+            );
+        }
+
         if ($url === 'payment/cash') {
             $this->ensureMethod(static::METHOD_POST);
             $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
@@ -465,7 +474,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         $currentQuantity = 0;
         $cart = $orderProcess->getCart();
         foreach ($cart->getProducts() as $item) {
-            if ((int)$item['id_product'] === $sku->productId && (int)$item['id_combination'] === $sku->combinationId) {
+            if ((int)$item['id_product'] === $sku->productId && (int)$item['id_product_attribute'] === $sku->combinationId) {
                 $currentQuantity += (int)$item['quantity'];
             }
         }
@@ -506,7 +515,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         $cart = $orderProcess->getCart();
         $currentQuantity = 0;
         foreach ($cart->getProducts() as $item) {
-            if ((int)$item['id_product'] === $sku->productId && (int)$item['id_combination'] === $sku->combinationId) {
+            if ((int)$item['id_product'] === $sku->productId && (int)$item['id_product_attribute'] === $sku->combinationId) {
                 $currentQuantity += (int)$item['quantity'];
             }
         }
@@ -560,7 +569,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         $cart = $orderProcess->getCart();
         $quantity = 0;
         foreach ($cart->getProducts() as $item) {
-            if ((int)$item['id_product'] === $sku->productId && (int)$item['id_combination'] === $sku->combinationId) {
+            if ((int)$item['id_product'] === $sku->productId && (int)$item['id_product_attribute'] === $sku->combinationId) {
                 $quantity += (int)$item['quantity'];
             }
         }
@@ -707,6 +716,27 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
     }
 
     /**
+     * @param Factory $factory
+     * @param OrderProcess $orderProcess
+     *
+     * @return OrderProcessResponse|InvalidOrderStatusResponse
+     *
+     * @throws PrestaShopException
+     */
+    private function processPaymentCancel(Factory $factory, OrderProcess $orderProcess)
+        : InvalidOrderStatusResponse
+        | OrderProcessResponse
+    {
+        if ($orderProcess->getStatus() !== OrderProcess::STATUS_PROCESSING_PAYMENT) {
+            return new InvalidOrderStatusResponse(OrderProcess::STATUS_PROCESSING_PAYMENT, $orderProcess->getStatus());
+        }
+        $orderProcessService = $this->module->getFactory()->getOrderProcessService();
+        $orderProcess = $orderProcessService->cancelPayment($orderProcess);
+        return new OrderProcessResponse($orderProcess);
+    }
+
+
+        /**
      * @param Factory $factory
      * @param OrderProcess $orderProcess
      * @param float $amount
