@@ -2,8 +2,10 @@
 
 namespace Thirtybees\Module\POS\Api\Response;
 
+use PrestaShopException;
 use Thirtybees\Module\POS\Auth\Model\User;
 use Thirtybees\Module\POS\DependencyInjection\Factory;
+use Thirtybees\Module\POS\Exception\NotFoundException;
 
 class UserResponse extends JSendSuccessResponse
 {
@@ -25,11 +27,15 @@ class UserResponse extends JSendSuccessResponse
      * @param Factory $factory
      *
      * @return array
+     *
+     * @throws PrestaShopException
+     * @throws NotFoundException
      */
     public function getData(Factory $factory): array
     {
         $employee = $this->user->getEmployee();
         $token = $this->user->getToken();
+        $workstation = $factory->getWorkstationService()->getById($token->getWorkstationId());
 
         return [
             'username' => (string)$employee->email,
@@ -37,6 +43,10 @@ class UserResponse extends JSendSuccessResponse
             'firstname' => (string)$employee->firstname,
             'lastname' => (string)$employee->lastname,
             'token' => $token->getValue(),
+            'workstation' => [
+                'id' => $workstation->getId(),
+                'name' => $workstation->getName(),
+            ]
         ];
     }
 }

@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS `PREFIX_tbpos_workstation` (
     `id_tbpos_workstation` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(100) NOT NULL,
+    `active` TINYINT(1) NOT NULL DEFAULT 1,
     PRIMARY KEY (`id_tbpos_workstation`)
 ) ENGINE=ENGINE_TYPE DEFAULT CHARSET=CHARSET_TYPE COLLATE=COLLATE_TYPE;
 
@@ -11,11 +12,12 @@ CREATE TABLE IF NOT EXISTS `PREFIX_tbpos_token` (
     `role` enum(ENUM_VALUES_ROLES) NOT NULL,
     `generated` INT(11) UNSIGNED NOT NULL,
     `expiration` INT(11) UNSIGNED NOT NULL,
-    `id_tbpos_workstation` INT(11) UNSIGNED NOT NULL DEFAULT 0,
+    `id_tbpos_workstation` INT(11) UNSIGNED NOT NULL,
     `id_tbpos_order_process` INT(11) UNSIGNED NULL DEFAULT 0,
     PRIMARY KEY (`id_tbpos_token`),
     UNIQUE KEY `tbpos_t_value` (`value`),
-    FOREIGN KEY `tbpos_t_employee` (`id_employee`) REFERENCES `PREFIX_employee`(`id_employee`) ON DELETE CASCADE
+    FOREIGN KEY `tbpos_t_employee` (`id_employee`) REFERENCES `PREFIX_employee`(`id_employee`) ON DELETE CASCADE,
+    FOREIGN KEY `tbpos_t_workstation` (`id_tbpos_workstation`) REFERENCES `PREFIX_tbpos_workstation`(`id_tbpos_workstation`) ON DELETE RESTRICT
 ) ENGINE=ENGINE_TYPE DEFAULT CHARSET=CHARSET_TYPE COLLATE=COLLATE_TYPE;
 
 CREATE TABLE IF NOT EXISTS `PREFIX_tbpos_employee_role` (
@@ -42,3 +44,7 @@ CREATE TABLE IF NOT EXISTS `PREFIX_tbpos_order_process` (
 INSERT INTO PREFIX_tbpos_employee_role(id_employee, role)
 SELECT id_employee, 'CASHIER'
 FROM PREFIX_employee;
+
+-- DUMMY DATA
+INSERT INTO PREFIX_tbpos_workstation(name, active)
+VALUES ('Cash register 1', 1), ('Cash register 2', 1), ('Cash register 3 - disabled', 0);

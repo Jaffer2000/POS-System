@@ -48,6 +48,11 @@ class Token
     /**
      * @var int
      */
+    private int $workstationId;
+
+    /**
+     * @var int
+     */
     private int $orderProcessId;
 
     /**
@@ -60,6 +65,7 @@ class Token
      * @param int $id
      * @param string $value
      * @param int $employeeId
+     * @param int $workstationId
      * @param string $role
      * @param int $orderProcessId
      * @param DateTime $generated
@@ -69,6 +75,7 @@ class Token
         int      $id,
         string   $value,
         int      $employeeId,
+        int      $workstationId,
         string   $role,
         int      $orderProcessId,
         DateTime $generated,
@@ -81,6 +88,7 @@ class Token
         $this->expiration = $expiration;
         $this->role = $role;
         $this->orderProcessId = $orderProcessId;
+        $this->workstationId = $workstationId;
     }
 
 
@@ -195,5 +203,11 @@ class Token
         return $this;
     }
 
-
+    /**
+     * @return int
+     */
+    public function getWorkstationId(): int
+    {
+        return $this->workstationId;
+    }
 }

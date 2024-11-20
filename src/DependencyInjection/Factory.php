@@ -22,6 +22,8 @@ use Thirtybees\Module\POS\OrderProcess\Service\OrderProcessServiceImpl;
 use Thirtybees\Module\POS\Payment\PaymentMethods;
 use Thirtybees\Module\POS\Sku\Service\SkuService;
 use Thirtybees\Module\POS\Sku\Service\SkuServiceImpl;
+use Thirtybees\Module\POS\Workstation\Service\WorkstationService;
+use Thirtybees\Module\POS\Workstation\Service\WorkstationServiceImpl;
 
 class Factory
 {
@@ -29,6 +31,11 @@ class Factory
      * @var SkuService
      */
     private SkuService $skuService;
+
+    /**
+     * @var WorkstationService
+     */
+    private WorkstationService $workstationService;
 
     /**
      * @var AuthService|AuthServiceImpl
@@ -50,6 +57,7 @@ class Factory
     public function __construct(TbPOS $module)
     {
         $this->paymentMethods = new PaymentMethods();
+        $this->workstationService = new WorkstationServiceImpl();
         $this->skuService = new SkuServiceImpl();
         $this->authService = new AuthServiceImpl();
         $this->orderProcessService = new OrderProcessServiceImpl(
@@ -89,6 +97,14 @@ class Factory
     public function getPaymentMethods(): PaymentMethods
     {
         return $this->paymentMethods;
+    }
+
+    /**
+     * @return WorkstationService
+     */
+    public function getWorkstationService(): WorkstationService
+    {
+        return $this->workstationService;
     }
 
 }

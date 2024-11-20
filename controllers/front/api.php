@@ -6,6 +6,7 @@ use Thirtybees\Module\POS\Api\Response\AccessDeniedResponse;
 use Thirtybees\Module\POS\Api\Response\BadRequestResponse;
 use Thirtybees\Module\POS\Api\Response\ForbiddenResponse;
 use Thirtybees\Module\POS\Api\Response\GetSkuListResponse;
+use Thirtybees\Module\POS\Api\Response\GetWorkstationListResponse;
 use Thirtybees\Module\POS\Api\Response\InvalidAmountCollectedResponse;
 use Thirtybees\Module\POS\Api\Response\InvalidOrderStatusResponse;
 use Thirtybees\Module\POS\Api\Response\JSendErrorResponse;
@@ -150,6 +151,11 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             return $this->processGetProductByReference($factory, $matches[1]);
         }
 
+        if ($url === 'workstations') {
+            $this->ensureMethod(static::METHOD_GET);
+            return $this->processGetWorkstations($factory);
+        }
+
         if ($url === 'token') {
             $this->ensureMethod(static::METHOD_GET);
             $token = $this->ensureAccess(Role::getRoles());
@@ -161,6 +167,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             $body = $this->getBody();
             return $this->processLogin(
                 $factory,
+                (int)$this->getParameter('workstationId', $body),
                 (string)$this->getParameter('username', $body),
                 (string)$this->getParameter('password', $body),
                 (string)$this->getParameter('role', $body),
@@ -591,20 +598,31 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
 
     /**
      * @param Factory $factory
+     * @param int $workstationId
      * @param string $username
      * @param string $password
      * @param string $role
      *
-     * @return UserResponse
+     * @return UserResponse|NotFoundResponse
+     *
      * @throws AccessDeniedException
+     * @throws PrestaShopException
      */
     protected function processLogin(
         Factory $factory,
+        int $workstationId,
         string $username,
         string $password,
         string $role
-    ): UserResponse {
-        $user = $factory->authService()->login($username, $password, $role);
+    ) : UserResponse
+      | NotFoundResponse
+    {
+        $workstationService = $factory->getWorkstationService();
+        $workstation = $workstationService->findById($workstationId);
+        if (! $workstation) {
+            return new NotFoundResponse("Workstation with id '$workstationId' not found");
+        }
+        $user = $factory->authService()->login($username, $password, $role, $workstation);
         return new UserResponse($user);
     }
 
@@ -987,6 +1005,18 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             }
         }
         return false;
+    }
+
+    /**
+     * @param Factory $factory
+     *
+     * @return GetWorkstationListResponse
+     *
+     * @throws PrestaShopException
+     */
+    private function processGetWorkstations(Factory $factory): GetWorkstationListResponse
+    {
+        return new GetWorkstationListResponse($factory->getWorkstationService()->findAll(true));
     }
 
 }

@@ -14,7 +14,6 @@
 
 namespace Thirtybees\Module\POS\Auth\Service;
 
-use DateInterval;
 use DateTime;
 use Db;
 use DbQuery;
@@ -27,6 +26,7 @@ use Thirtybees\Module\POS\Exception\AccessDeniedException;
 use Thirtybees\Module\POS\Exception\InvalidArgumentException;
 use Thirtybees\Module\POS\Exception\ServerErrorException;
 use Thirtybees\Module\POS\OrderProcess\Model\OrderProcess;
+use Thirtybees\Module\POS\Workstation\Model\Workstation;
 use Tools;
 use Validate;
 
@@ -34,16 +34,17 @@ class AuthServiceImpl implements AuthService
 {
 
     /**
+     *
      * @param string $username
      * @param string $password
      * @param string $role
-     *
+     * @param Workstation $workstation
      * @return User
      *
      * @throws AccessDeniedException
      * @throws PrestaShopException
      */
-    public function login(string $username, string $password, string $role): User
+    public function login(string $username, string $password, string $role, Workstation $workstation): User
     {
         if (! Role::isValidRole($role)) {
             throw new InvalidArgumentException("Invalid role: $role");
@@ -65,7 +66,13 @@ class AuthServiceImpl implements AuthService
             throw new AccessDeniedException("Employee does not have '$role' role");
         }
 
-        $token = $this->generateToken($employeeId, $role);
+        $token = $this->generateToken(
+            $employeeId,
+            $role,
+            $workstation->getId(),
+            0,
+            3600
+        );
 
         return new User($employee, $token);
     }
@@ -93,6 +100,7 @@ class AuthServiceImpl implements AuthService
             (int)$row['id_tbpos_token'],
             $value,
             (int)$row['id_employee'],
+            (int)$row['id_tbpos_workstation'],
             (string)$row['role'],
             (int)$row['id_tbpos_order_process'],
             static::getDateTime((int)$row['generated']),
@@ -111,6 +119,7 @@ class AuthServiceImpl implements AuthService
         $newToken = $this->generateToken(
             $token->getEmployeeId(),
             $token->getRole(),
+            $token->getWorkstationId(),
             $token->getOrderProcessId()
         );
         $this->revoke($token);
@@ -201,27 +210,28 @@ class AuthServiceImpl implements AuthService
     /**
      * @param int $employeeId
      * @param string $role
+     * @param int $workstationId
      * @param int $orderProcessId
-     * @param int $ttl
      *
      * @return Token
      *
      * @throws PrestaShopException
      */
-    private function generateToken(int $employeeId, string $role, int $orderProcessId = 0, int $ttl = 3600): Token
+    private function generateToken(int $employeeId, string $role, int $workstationId, int $orderProcessId): Token
     {
         if (! Role::isValidRole($role)) {
             throw new InvalidArgumentException('Invalid role: ' . $role);
         }
         $conn = Db::getInstance();
         $generated = time();
-        $expiration = $generated + $ttl;
+        $expiration = $generated + 3600;
 
         $value = $this->generateTokenValue();
         $result = $conn->insert('tbpos_token', [
             'id_employee' => (int)$employeeId,
             'value' => pSQL($value),
             'role' => pSQL($role),
+            'id_tbpos_workstation' => (int)$workstationId,
             'id_tbpos_order_process' => (int)$orderProcessId,
             'generated' => $generated,
             'expiration' => $expiration,
@@ -235,6 +245,7 @@ class AuthServiceImpl implements AuthService
             (int)$conn->Insert_ID(),
             $value,
             $employeeId,
+            $workstationId,
             $role,
             $orderProcessId,
             static::getDateTime($generated),

@@ -21,6 +21,7 @@ use Thirtybees\Module\POS\Auth\Model\User;
 use Thirtybees\Module\POS\Exception\AccessDeniedException;
 use Thirtybees\Module\POS\Exception\UnauthorizedException;
 use Thirtybees\Module\POS\OrderProcess\Model\OrderProcess;
+use Thirtybees\Module\POS\Workstation\Model\Workstation;
 
 interface AuthService
 {
@@ -28,12 +29,13 @@ interface AuthService
      * @param string $username
      * @param string $password
      * @param string $role
+     * @param Workstation $workstation
      *
      * @return User
      *
      * @throws AccessDeniedException
      */
-    public function login(string $username, string $password, string $role): User;
+    public function login(string $username, string $password, string $role, Workstation $workstation): User;
 
     /**
      * @param string $value
