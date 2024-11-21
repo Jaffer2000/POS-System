@@ -14,6 +14,7 @@
 
 namespace Thirtybees\Module\POS\Auth\Service;
 
+use Configuration;
 use DateTime;
 use Db;
 use DbQuery;
@@ -224,7 +225,11 @@ class AuthServiceImpl implements AuthService
         }
         $conn = Db::getInstance();
         $generated = time();
-        $expiration = $generated + 3600;
+        $exp = (int)Configuration::getGlobalValue('TBPOS_TOKEN_EXPIRATION');
+        if ($exp <= 0) {
+            $exp = 3600;
+        }
+        $expiration = $generated + $exp;
 
         $value = $this->generateTokenValue();
         $result = $conn->insert('tbpos_token', [

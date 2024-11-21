@@ -54,7 +54,8 @@ class TbPOS extends PaymentModule
         return (
             parent::install() &&
             $this->installDb($createTables) &&
-            $this->registerHook('moduleRoutes')
+            $this->registerHook('moduleRoutes') &&
+            Configuration::updateGlobalValue('TBPOS_TOKEN_EXPIRATION', 3600)
         );
     }
 
@@ -222,6 +223,7 @@ class TbPOS extends PaymentModule
     {
         if (Tools::isSubmit('submitSave')) {
             Configuration::updateGlobalValue('TBPOS_CARRIER', Tools::getIntValue('TBPOS_CARRIER'));
+            Configuration::updateGlobalValue('TBPOS_TOKEN_EXPIRATION', Tools::getIntValue('TBPOS_TOKEN_EXPIRATION'));
             Tools::redirectAdmin($this->context->link->getAdminLink('AdminModules', true, [
                 'configure' => $this->name,
                 'conf' => 6
@@ -254,6 +256,12 @@ class TbPOS extends PaymentModule
                             'name' => 'name'
                         ]
                     ],
+                    [
+                        'type'     => 'text',
+                        'label'    => $this->l('Token expiration (seconds)'),
+                        'name'     => 'TBPOS_TOKEN_EXPIRATION',
+                        'required' => true,
+                    ],
                 ],
                 'submit' => [
                     'title' => $this->l('Save'),
@@ -280,7 +288,8 @@ class TbPOS extends PaymentModule
         $helper->token = Tools::getAdminTokenLite('AdminModules');
         $helper->languages = $controller->getLanguages();
         $helper->fields_value = [
-            'TBPOS_CARRIER' => Configuration::get('TBPOS_CARRIER'),
+            'TBPOS_CARRIER' => (int)Configuration::getGlobalValue('TBPOS_CARRIER'),
+            'TBPOS_TOKEN_EXPIRATION' => (int)Configuration::getGlobalValue('TBPOS_TOKEN_EXPIRATION'),
         ];
 
         return $helper->generateForm([ $settingsForm ]);
