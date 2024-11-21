@@ -42,7 +42,10 @@ class UserResponse extends JSendSuccessResponse
             'role' => $token->getRole(),
             'firstname' => (string)$employee->firstname,
             'lastname' => (string)$employee->lastname,
-            'token' => $token->getValue(),
+            'token' => [
+                'value' => $token->getValue(),
+                'expiresIn' =>  $token->getExpiresIn(),
+            ],
             'workstation' => [
                 'id' => $workstation->getId(),
                 'name' => $workstation->getName(),

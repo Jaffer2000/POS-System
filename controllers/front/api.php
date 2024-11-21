@@ -174,6 +174,12 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             );
         }
 
+        if ($url === 'token/exchange') {
+            $this->ensureMethod(static::METHOD_POST);
+            $token = $this->ensureAccess(Role::getRoles());
+            return $this->processExchangeToken($factory, $token);
+        }
+
         if ($url === 'orders/new') {
             $this->ensureMethod(static::METHOD_POST);
             $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
@@ -1017,6 +1023,17 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
     private function processGetWorkstations(Factory $factory): GetWorkstationListResponse
     {
         return new GetWorkstationListResponse($factory->getWorkstationService()->findAll(true));
+    }
+
+    /**
+     * @throws PrestaShopException
+     */
+    private function processExchangeToken(Factory $factory, Token $token) : UserResponse
+    {
+        $authService = $factory->authService();
+        $newToken = $authService->exchangeToken($token);
+        $user = $authService->tokenIntrospection($newToken);
+        return new UserResponse($user);
     }
 
 }
