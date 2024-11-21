@@ -29,6 +29,7 @@ use Thirtybees\Module\POS\OrderProcess\Model\OrderProcess;
 use Thirtybees\Module\POS\Payment\Method\CashPaymentMethod;
 use Thirtybees\Module\POS\Payment\Method\CreditCardOfflinePaymentMethod;
 use Thirtybees\Module\POS\Payment\Method\PaymentMethod;
+use Thirtybees\Module\POS\Sku\Service\SkuService;
 
 /**
  * Copyright (C) 2022-2022 thirty bees <contact@thirtybees.com>
@@ -139,15 +140,28 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         $url = trim($url, '/');
         if ($url === 'products') {
             $this->ensureMethod(static::METHOD_GET);
+            $this->ensureAccess(Role::getRoles());
             return $this->processGetProducts($factory);
+        }
+        if ($url === 'products/find') {
+            $this->ensureMethod(static::METHOD_POST);
+            $this->ensureAccess(Role::getRoles());
+            $body = $this->getBody();
+            return $this->processGetProducts(
+                $factory,
+                $this->toSearchType($this->getParameter('type', $body), 'type'),
+                $this->getParameter('term', $body)
+            );
         }
         if (preg_match('#^products/([0-9]+)/([0-9]+)$#', $url, $matches)) {
             $this->ensureMethod(static::METHOD_GET);
+            $this->ensureAccess(Role::getRoles());
             return $this->processGetProductById($factory, (int)$matches[1], (int)$matches[2]);
         }
 
         if (preg_match('#^products/(.*)$#', $url, $matches)) {
             $this->ensureMethod(static::METHOD_GET);
+            $this->ensureAccess(Role::getRoles());
             return $this->processGetProductByReference($factory, $matches[1]);
         }
 
@@ -418,12 +432,15 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
 
     /**
      * @param Factory $factory
+     * @param string $type
+     * @param string $term
      *
      * @return GetSkuListResponse
      */
-    protected function processGetProducts(Factory $factory): GetSkuListResponse
+    protected function processGetProducts(Factory $factory, string $type = SkuService::SEARCH_ALL, string $term = ''): GetSkuListResponse
     {
-        $list = $factory->getSKUService()->findAll();
+
+        $list = $factory->getSKUService()->find($type, $term);
         return new GetSkuListResponse($list);
     }
 
@@ -1034,6 +1051,26 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         $newToken = $authService->exchangeToken($token);
         $user = $authService->tokenIntrospection($newToken);
         return new UserResponse($user);
+    }
+
+    /**
+     * @param string $value
+     * @param string $paramName
+     * @return string
+     * @throws InvalidRequestException
+     */
+    private function toSearchType(string $value, $paramName): string
+    {
+        $values = [
+            SkuService::SEARCH_ALL,
+            SkuService::SEARCH_BARCODE,
+            SkuService::SEARCH_NAME,
+            SkuService::SEARCH_REFERENCE,
+        ];
+        if (in_array($value, $values)) {
+            return $value;
+        }
+        throw new InvalidRequestException("Invalid value '$value' for parameter '$paramName', allowed values: [".implode(', ', $values)."]");
     }
 
 }

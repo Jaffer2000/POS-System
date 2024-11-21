@@ -112,6 +112,7 @@ class SkuServiceImpl implements SkuService
             ->select('p.reference')
             ->select('pl.name')
             ->select('pl.link_rewrite')
+            ->select('p.ean13')
             ->from('product', 'p')
             ->innerJoin('product_lang', 'pl', '(pl.id_product = p.id_product AND pl.id_lang = '.$languageId . Shop::addSqlRestrictionOnLang('pl').')')
             ->where('p.id_product = ' . $productId);
@@ -126,6 +127,7 @@ class SkuServiceImpl implements SkuService
             $combinationId,
             '',
             (string)$row['reference'],
+            (string)$row['ean13'],
             (string)$row['link_rewrite']
         );
     }
@@ -147,6 +149,7 @@ class SkuServiceImpl implements SkuService
             ->select('pa.reference')
             ->select('pl.name')
             ->select('pl.link_rewrite')
+            ->select('pa.ean13')
             ->select(static::getCombinationNameSubquery('combination_name', 'pa', $languageId))
             ->from('product_attribute', 'pa')
             ->innerJoin('product', 'p', '(pa.id_product = p.id_product)')
@@ -163,6 +166,7 @@ class SkuServiceImpl implements SkuService
             $combinationId,
             (string)$row['combination_name'],
             (string)$row['reference'],
+            (string)$row['ean13'],
             (string)$row['link_rewrite']
         );
     }
@@ -182,6 +186,7 @@ class SkuServiceImpl implements SkuService
             ->select('p.reference')
             ->select('pl.name')
             ->select('pl.link_rewrite')
+            ->select('p.ean13')
             ->from('product', 'p')
             ->innerJoin('product_lang', 'pl', '(pl.id_product = p.id_product AND pl.id_lang = '.$languageId . Shop::addSqlRestrictionOnLang('pl').')')
             ->where('p.reference = "'.pSQL($reference).'"');
@@ -197,6 +202,7 @@ class SkuServiceImpl implements SkuService
             $combinationId,
             '',
             (string)$row['reference'],
+            (string)$row['ean13'],
             (string)$row['link_rewrite']
         );
     }
@@ -217,6 +223,7 @@ class SkuServiceImpl implements SkuService
             ->select('pa.reference')
             ->select('pl.name')
             ->select('pl.link_rewrite')
+            ->select('pa.ean13')
             ->select(static::getCombinationNameSubquery('combination_name', 'pa', $languageId))
             ->from('product_attribute', 'pa')
             ->innerJoin('product', 'p', '(pa.id_product = p.id_product)')
@@ -234,6 +241,7 @@ class SkuServiceImpl implements SkuService
             $combinationId,
             (string)$row['combination_name'],
             (string)$row['reference'],
+            (string)$row['ean13'],
             (string)$row['link_rewrite']
         );
     }
@@ -268,28 +276,50 @@ class SkuServiceImpl implements SkuService
      *
      * @throws PrestaShopException
      */
-    public function findAll(): array
+    public function find(string $type, string $search): array
     {
         $languageId = (int)Context::getContext()->language->id;
         $conn = Db::getInstance();
+
         $sql = (new DbQuery())
             ->select('p.id_product')
-            ->select('p.reference')
+            ->select('coalesce(NULLIF(pa.reference, ""), p.reference) as reference')
+            ->select('coalesce(NULLIF(pa.ean13, ""), p.ean13) as ean13')
             ->select('pl.name')
             ->select('pl.link_rewrite')
+            ->select('pas.id_product_attribute')
+            ->select(static::getCombinationNameSubquery('combination_name', 'pa', $languageId))
             ->from('product', 'p')
-            ->innerJoin('product_lang', 'pl', '(pl.id_product = p.id_product AND pl.id_lang = '.$languageId . Shop::addSqlRestrictionOnLang('pl').')');
+            ->innerJoin('product_lang', 'pl', '(pl.id_product = p.id_product AND pl.id_lang = '.$languageId . Shop::addSqlRestrictionOnLang('pl').')')
+            ->leftJoin('product_attribute', 'pa', '(pa.id_product = p.id_product)')
+            ->leftJoin('product_attribute_shop', 'pas', '(pas.id_product = p.id_product AND pas.id_product_attribute = pa.id_product_attribute'.Shop::addSqlRestriction(false, 'pas').')');
+
+        if ($search) {
+            $where = [];
+            if ($type === static::SEARCH_ALL || $type === static::SEARCH_BARCODE) {
+                $where[] = 'i.ean13 LIKE \'%' . pSQL($search) . '%\'';
+            }
+            if ($type === static::SEARCH_ALL || $type === static::SEARCH_NAME) {
+                $where[] = 'i.name LIKE \'%' . pSQL($search) . '%\'';
+            }
+            if ($type === static::SEARCH_ALL || $type === static::SEARCH_REFERENCE) {
+                $where[] = 'i.reference LIKE \'%' . pSQL($search) . '%\'';
+            }
+
+            $sql = "SELECT i.* FROM ($sql) AS i WHERE " . implode(' OR ', $where);
+        }
         $res = $conn->getArray($sql);
 
         return array_map(function($row) {
             $productId = (int)$row['id_product'];
-            $combinationId = 0;
+            $combinationId = (int)$row['id_product_attribute'];
             return new Sku(
                 $productId,
                 (string)$row['name'],
                 $combinationId,
-                '',
+                (string)$row['combination_name'],
                 (string)$row['reference'],
+                (string)$row['ean13'],
                 (string)$row['link_rewrite']
             );
         }, $res);

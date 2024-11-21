@@ -20,6 +20,12 @@ use Thirtybees\Module\POS\Sku\Model\Sku;;
 
 interface SkuService
 {
+
+    const SEARCH_ALL = 'ALL';
+    const SEARCH_BARCODE = 'BARCODE';
+    const SEARCH_NAME = 'NAME';
+    const SEARCH_REFERENCE = 'REFERENCE';
+
     /**
      * @param string $reference
      *
@@ -53,9 +59,12 @@ interface SkuService
     public function getById(int $productId, int $combinationId): Sku;
 
     /**
+     * @param string $type
+     * @param string $search
+     *
      * @return Sku[]
      */
-    public function findAll(): array;
+    public function find(string $type, string $search): array;
 
 
 }

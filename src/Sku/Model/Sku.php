@@ -57,6 +57,7 @@ class Sku
      * @param int $combinationId
      * @param string $combinationName
      * @param string $reference
+     * @param string $ean13
      * @param string $rewrite
      */
     public function __construct(
@@ -65,6 +66,7 @@ class Sku
         int $combinationId,
         string $combinationName,
         string $reference,
+        string $ean13,
         string $rewrite
     ) {
         $this->productId = $productId;
@@ -72,6 +74,7 @@ class Sku
         $this->combinationId = $combinationId;
         $this->combinationName = $combinationName;
         $this->reference = $reference;
+        $this->barcode = $ean13;
         $this->rewrite = $rewrite;
     }
 
