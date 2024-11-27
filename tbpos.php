@@ -55,6 +55,7 @@ class TbPOS extends PaymentModule
             parent::install() &&
             $this->installDb($createTables) &&
             $this->registerHook('moduleRoutes') &&
+            $this->registerHook('actionGetPrintNodeReports') &&
             Configuration::updateGlobalValue('TBPOS_TOKEN_EXPIRATION', 3600)
         );
     }
@@ -293,6 +294,20 @@ class TbPOS extends PaymentModule
         ];
 
         return $helper->generateForm([ $settingsForm ]);
+    }
+
+    /**
+     * @param array $params
+     *
+     * @return array
+     */
+    public function hookActionGetPrintNodeReports($params): array
+    {
+        $printnodeIntegratin = $this->getFactory()->getPrintnodeIntegration();
+        if ($printnodeIntegratin->isEnabled()) {
+            return $printnodeIntegratin->getReports($params['factory']);
+        }
+        return [];
     }
 
 }

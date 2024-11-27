@@ -56,7 +56,7 @@ class OrderProcessResponse extends JSendSuccessResponse
             case OrderProcess::STATUS_CANCELED:
                 return $data;
             case OrderProcess::STATUS_COMPLETED:
-                $data = $this->addReceiptData($data, $this->orderProcess->getOrder());
+                $data = $this->addOrderData($factory, $data, $this->orderProcess->getOrder());
                 return $data;
             case OrderProcess::STATUS_PAYMENT_FAILED:
                 $data = $this->addCartData($data, $this->orderProcess->getCart());
@@ -119,15 +119,15 @@ class OrderProcessResponse extends JSendSuccessResponse
     }
 
     /**
+     * @param Factory $factory
      * @param array $data
      * @param Order $order
      * @return array
      */
-    private function addReceiptData(array $data, Order $order): array
+    private function addOrderData(Factory $factory, array $data, Order $order): array
     {
-        $data['receipt'] = [
-          'orderId' => (int)$order->id
-        ];
+        $orderResponse = new OrderResponse($order);
+        $data['order'] = $orderResponse->getData($factory);
         return $data;
     }
 

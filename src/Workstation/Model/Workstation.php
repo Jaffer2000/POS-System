@@ -33,15 +33,22 @@ class Workstation
     private bool $active;
 
     /**
+     * @var int
+     */
+    private int $receiptPrinterId;
+
+    /**
      * @param int $id
      * @param string $name
      * @param bool|int $active
+     * @param int $receiptPrinterId
      */
-    public function __construct(int $id, string $name, bool $active)
+    public function __construct(int $id, string $name, bool $active, int $receiptPrinterId)
     {
         $this->id = $id;
         $this->name = $name;
         $this->active = $active;
+        $this->receiptPrinterId = $receiptPrinterId;
     }
 
     /**
@@ -66,6 +73,14 @@ class Workstation
     public function isActive(): bool
     {
         return $this->active;
+    }
+
+    /**
+     * @return int
+     */
+    public function getReceiptPrinterId(): int
+    {
+        return $this->receiptPrinterId;
     }
 
 }

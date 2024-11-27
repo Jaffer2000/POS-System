@@ -13,11 +13,18 @@ class PrintReceiptResponse extends JSendSuccessResponse
     private string $printerId;
 
     /**
-     * @param string $printerId
+     * @var string
      */
-    public function __construct(string $printerId)
+    private string $printJob;
+
+    /**
+     * @param string $printerId
+     * @param string $printJob
+     */
+    public function __construct(string $printerId, string $printJob)
     {
         $this->printerId = $printerId;
+        $this->printJob = $printJob;
     }
 
     /**
@@ -28,6 +35,7 @@ class PrintReceiptResponse extends JSendSuccessResponse
     {
         return [
             'printer' => $this->printerId,
+            'printJob' => $this->printJob,
             'message' => 'Receipt successfully printed',
         ];
     }

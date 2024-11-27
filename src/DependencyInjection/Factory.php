@@ -17,6 +17,7 @@ namespace Thirtybees\Module\POS\DependencyInjection;
 use TbPOS;
 use Thirtybees\Module\POS\Auth\Service\AuthService;
 use Thirtybees\Module\POS\Auth\Service\AuthServiceImpl;
+use Thirtybees\Module\POS\Integration\PrintnodeIntegration;
 use Thirtybees\Module\POS\OrderProcess\Service\OrderProcessService;
 use Thirtybees\Module\POS\OrderProcess\Service\OrderProcessServiceImpl;
 use Thirtybees\Module\POS\Payment\PaymentMethods;
@@ -53,9 +54,15 @@ class Factory
     private PaymentMethods $paymentMethods;
 
     /**
+     * @var PrintnodeIntegration
+     */
+    private PrintnodeIntegration $printNodeIntegration;
+
+    /**
      */
     public function __construct(TbPOS $module)
     {
+        $this->printNodeIntegration = new PrintnodeIntegration($module);
         $this->paymentMethods = new PaymentMethods();
         $this->workstationService = new WorkstationServiceImpl();
         $this->skuService = new SkuServiceImpl();
@@ -105,6 +112,14 @@ class Factory
     public function getWorkstationService(): WorkstationService
     {
         return $this->workstationService;
+    }
+
+    /**
+     * @return PrintnodeIntegration
+     */
+    public function getPrintnodeIntegration(): PrintnodeIntegration
+    {
+        return $this->printNodeIntegration;
     }
 
 }

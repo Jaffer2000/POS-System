@@ -8,6 +8,7 @@ use Order;
 use PrestaShopException;
 use Thirtybees\Module\POS\Exception\ServerErrorException;
 use Thirtybees\Module\POS\Payment\Method\PaymentMethod;
+use Thirtybees\Module\POS\Workstation\Model\Workstation;
 use Validate;
 
 class OrderProcess
@@ -171,4 +172,5 @@ class OrderProcess
         }
         throw new ServerErrorException("Invalid order status: " . $this->status);
     }
+
 }

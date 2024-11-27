@@ -13,6 +13,7 @@ use Thirtybees\Module\POS\Api\Response\JSendErrorResponse;
 use Thirtybees\Module\POS\Api\Response\JSendResponse;
 use Thirtybees\Module\POS\Api\Response\MinimalQuantityRequiredResponse;
 use Thirtybees\Module\POS\Api\Response\NotFoundResponse;
+use Thirtybees\Module\POS\Api\Response\OrderListResponse;
 use Thirtybees\Module\POS\Api\Response\OrderProcessResponse;
 use Thirtybees\Module\POS\Api\Response\OutOfStockResponse;
 use Thirtybees\Module\POS\Api\Response\PrintReceiptResponse;
@@ -25,6 +26,7 @@ use Thirtybees\Module\POS\Exception\AccessDeniedException;
 use Thirtybees\Module\POS\Exception\ForbiddenException;
 use Thirtybees\Module\POS\Exception\InvalidRequestException;
 use Thirtybees\Module\POS\Exception\NotFoundException;
+use Thirtybees\Module\POS\Exception\ServerErrorException;
 use Thirtybees\Module\POS\OrderProcess\Model\OrderProcess;
 use Thirtybees\Module\POS\Payment\Method\CashPaymentMethod;
 use Thirtybees\Module\POS\Payment\Method\CreditCardOfflinePaymentMethod;
@@ -194,6 +196,12 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             return $this->processExchangeToken($factory, $token);
         }
 
+        if ($url === 'orders') {
+            $this->ensureMethod(static::METHOD_GET);
+            $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
+            return $this->processListOrders($factory);
+        }
+
         if ($url === 'orders/new') {
             $this->ensureMethod(static::METHOD_POST);
             $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
@@ -229,7 +237,8 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
             return $this->processPrintReceipt(
                 $factory,
-                $this->getOrderProcess($token)
+                $this->getOrderProcess($token),
+                $token
             );
         }
 
@@ -997,16 +1006,46 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
     /**
      * @param Factory $factory
      * @param OrderProcess $orderProcess
-     * @return InvalidOrderStatusResponse|PrintReceiptResponse
+     * @param Token $token
+     * @return InvalidOrderStatusResponse|PrintReceiptResponse|BadRequestResponse|ServerErrorException
+     *
+     * @throws PrestaShopException
      */
-    private function processPrintReceipt(Factory $factory, OrderProcess $orderProcess)
+    private function processPrintReceipt(Factory $factory, OrderProcess $orderProcess, Token $token)
         : InvalidOrderStatusResponse
         | PrintReceiptResponse
+        | BadRequestResponse
+        | ServerErrorException
     {
         if ($orderProcess->getStatus() === OrderProcess::STATUS_COMPLETED) {
-            $printerId = 'PRINTER_1';
-            // TODO: implement print
-            return new PrintReceiptResponse($printerId);
+            $workstation = $factory->getWorkstationService()->findById($token->getWorkstationId());
+            if (! $workstation) {
+                return new ServerErrorException("Workstation not found");
+            }
+            $printerId = $workstation->getReceiptPrinterId();
+            if (! $printerId) {
+                return new BadRequestResponse("Workstation has no receipt printer assigned");
+            }
+            $printnodeIntegration = $factory->getPrintnodeIntegration();
+            if (! $printnodeIntegration->isEnabled()) {
+                return new BadRequestResponse("Printnode integration is not enabled");
+            }
+
+            $printService = $printnodeIntegration->getService();
+            try {
+                $printJob = $printService->print(
+                    'tbpos:receipt',
+                    (int)$orderProcess->getOrder()->id,
+                    $printerId,
+                    (int)Context::getContext()->shop->id,
+                    (int)Context::getContext()->language->id
+                );
+            } catch (Throwable $e) {
+                return new ServerErrorException($e->getMessage());
+
+            }
+
+            return new PrintReceiptResponse($printerId, $printJob);
         } else {
             return new InvalidOrderStatusResponse(OrderProcess::STATUS_COMPLETED, $orderProcess->getStatus());
         }
@@ -1071,6 +1110,24 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             return $value;
         }
         throw new InvalidRequestException("Invalid value '$value' for parameter '$paramName', allowed values: [".implode(', ', $values)."]");
+    }
+
+    /**
+     * @param Factory $factory
+     *
+     * @return OrderListResponse
+     *
+     * @throws PrestaShopException
+     */
+    private function processListOrders(Factory $factory) : OrderListResponse
+    {
+        $orders = (new PrestaShopCollection(Order::class))
+            ->where('date_add', '>', date('-1 day'))
+            ->setPageSize(50)
+            ->setPageNumber(1)
+            ->orderBy('id_order', 'DESC')
+            ->getResults();
+        return new OrderListResponse($orders);
     }
 
 }
