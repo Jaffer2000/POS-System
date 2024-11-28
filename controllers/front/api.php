@@ -15,6 +15,7 @@ use Thirtybees\Module\POS\Api\Response\MinimalQuantityRequiredResponse;
 use Thirtybees\Module\POS\Api\Response\NotFoundResponse;
 use Thirtybees\Module\POS\Api\Response\OrderListResponse;
 use Thirtybees\Module\POS\Api\Response\OrderProcessResponse;
+use Thirtybees\Module\POS\Api\Response\OrderResponse;
 use Thirtybees\Module\POS\Api\Response\OutOfStockResponse;
 use Thirtybees\Module\POS\Api\Response\PrintReceiptResponse;
 use Thirtybees\Module\POS\Api\Response\SkuResponse;
@@ -205,6 +206,12 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
                 (int)$this->getParameter('page', $_GET, false, 1),
                 (int)$this->getParameter('per_page', $_GET, false, 8)
             );
+        }
+
+        if (preg_match('#^orders/([0-9]+)$#', $url, $matches)) {
+            $this->ensureMethod(static::METHOD_GET);
+            $this->ensureAccess(Role::getRoles());
+            return $this->processGetOrderById($factory, (int)$matches[1]);
         }
 
         if ($url === 'orders/new') {
@@ -1174,6 +1181,27 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             $total,
             $search
         );
+    }
+
+    /**
+     * @param Factory $factory
+     * @param int $orderId
+     *
+     * @return OrderResponse|NotFoundResponse
+     * @throws PrestaShopException
+     */
+    private function processGetOrderById(
+        Factory $factory,
+        int $orderId
+    ):OrderResponse
+     |NotFoundResponse
+    {
+        $order = new Order($orderId);
+        if (Validate::isLoadedObject($order)) {
+            return new OrderResponse($order);
+        } else {
+            return new NotFoundResponse("Order with id $orderId not found");
+        }
     }
 
 }

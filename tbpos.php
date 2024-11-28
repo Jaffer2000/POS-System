@@ -157,13 +157,13 @@ class TbPOS extends PaymentModule
             if ($stmt) {
                 try {
                     if (!Db::getInstance()->execute($stmt)) {
-                        PrestaShopLogger::addLog("wms: sql script $script: $stmt: error");
+                        PrestaShopLogger::addLog($this->name . ": sql script $script: $stmt: error");
                         if ($check) {
                             return false;
                         }
                     }
                 } catch (Exception $e) {
-                    PrestaShopLogger::addLog("wms: sql script $script: $stmt: $e");
+                    PrestaShopLogger::addLog($this->name . ": sql script $script: $stmt: $e");
                     if ($check) {
                         return false;
                     }
