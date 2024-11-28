@@ -5,7 +5,6 @@ namespace Thirtybees\Module\POS\Api\Response;
 use Customer;
 use Order;
 use PrestaShopException;
-use Product;
 use Thirtybees\Module\POS\DependencyInjection\Factory;
 use Thirtybees\Module\POS\Utils;
 
@@ -46,8 +45,8 @@ class OrderResponse extends JSendSuccessResponse
                 'reference' => $product['product_reference'],
                 'name' => $product['product_name'],
                 'quantity' => (int)$product['product_quantity'],
-                'price_tax_excl' => $product['total_price_tax_excl'],
-                'price_tax_incl' => $product['total_price_tax_incl'],
+                'price_tax_excl' => (float)$product['total_price_tax_excl'],
+                'price_tax_incl' => (float)$product['total_price_tax_incl'],
                 'image_url' => $imageUrl,
             ];
         }

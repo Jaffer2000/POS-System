@@ -92,8 +92,8 @@ class OrderProcessResponse extends JSendSuccessResponse
                 'reference' => $product['reference'],
                 'name' => $product['name'],
                 'quantity' => (int)$product['quantity'],
-                'price_tax_excl' => Product::getPriceStatic($productId, false, $combinationId),
-                'price_tax_incl' => Product::getPriceStatic($productId, true, $combinationId),
+                'price_tax_excl' => (float)Product::getPriceStatic($productId, false, $combinationId),
+                'price_tax_incl' => (float)Product::getPriceStatic($productId, true, $combinationId),
                 'image_url' => $imageUrl,
             ];
         }
@@ -123,6 +123,7 @@ class OrderProcessResponse extends JSendSuccessResponse
      * @param array $data
      * @param Order $order
      * @return array
+     * @throws PrestaShopException
      */
     private function addOrderData(Factory $factory, array $data, Order $order): array
     {

@@ -17,11 +17,40 @@ class OrderListResponse extends JSendSuccessResponse
     private array $list;
 
     /**
+     * @var int
+     */
+    private int $page;
+
+    /**
+     * @var int
+     */
+    private int $pageSize;
+
+    /**
+     * @var int
+     */
+    private int $totalItems;
+
+    /**
+     * @var string
+     */
+    private string $searchTerm;
+
+    /**
      * @param Order[] $list
      */
-    public function __construct(array $list = [])
-    {
+    public function __construct(
+        array $list,
+        int $page,
+        int $pageSize,
+        int $totalItems,
+        string $searchTerm,
+    ) {
+        $this->searchTerm = $searchTerm;
         $this->list = $list;
+        $this->page = $page;
+        $this->pageSize = $pageSize;
+        $this->totalItems = $totalItems;
     }
 
 
@@ -33,11 +62,19 @@ class OrderListResponse extends JSendSuccessResponse
      */
     public function getData(Factory $factory): array
     {
-        $resp = [];
+        $list = [];
         foreach ($this->list as $order) {
-            $resp[] = (new OrderResponse($order))->getData($factory);
+            $list[] = (new OrderResponse($order))->getData($factory);
         }
-        return $resp;
+        return [
+            'list' => $list,
+            'pagination' => [
+                'searchterm' => $this->searchTerm,
+                'current_page' => $this->page,
+                'total_items' => $this->totalItems,
+                'per_page' => $this->pageSize,
+            ]
+        ];
     }
 
 }

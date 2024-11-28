@@ -199,7 +199,12 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         if ($url === 'orders') {
             $this->ensureMethod(static::METHOD_GET);
             $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
-            return $this->processListOrders($factory);
+            return $this->processListOrders(
+                $factory,
+                $this->getParameter('searchterm', $_GET, false, ''),
+                (int)$this->getParameter('page', $_GET, false, 1),
+                (int)$this->getParameter('per_page', $_GET, false, 8)
+            );
         }
 
         if ($url === 'orders/new') {
@@ -1114,20 +1119,61 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
 
     /**
      * @param Factory $factory
+     * @param string $search
+     * @param int $page
+     * @param int $pageSize
      *
      * @return OrderListResponse
      *
      * @throws PrestaShopException
      */
-    private function processListOrders(Factory $factory) : OrderListResponse
+    private function processListOrders(
+        Factory $factory,
+        string $search,
+        int $page,
+        int $pageSize
+    ) : OrderListResponse
     {
-        $orders = (new PrestaShopCollection(Order::class))
-            ->where('date_add', '>', date('-1 day'))
-            ->setPageSize(50)
-            ->setPageNumber(1)
-            ->orderBy('id_order', 'DESC')
-            ->getResults();
-        return new OrderListResponse($orders);
+        $pageSize = min(max(1, (int)$pageSize), 100);
+        $page = max(1, (int)$page);
+        $sql = (new DbQuery())
+            ->select('o.*')
+            ->from('orders', 'o')
+            ->leftJoin('customer', 'c', 'c.id_customer = o.id_customer')
+            ->limit($pageSize, ($page - 1) * $pageSize)
+            ->orderBy('o.id_order DESC');
+
+        $totalSql = (new DbQuery())
+            ->select('COUNT(1) AS cnt')
+            ->leftJoin('customer', 'c', 'c.id_customer = o.id_customer')
+            ->from('orders', 'o');
+
+        $search = trim((string)$search);
+        if ($search !== '') {
+            $where = [
+                'o.reference LIKE \'%' . pSQL($search) . '%\'',
+                'o.id_order LIKE \'%' . pSQL($search) . '%\'',
+                'CONCAT(c.firstname, " ", c.lastname) LIKE \'%' . pSQL($search) . '%\'',
+                'c.email LIKE \'%' . pSQL($search) . '%\'',
+            ];
+            $sql->where(implode(' OR ', $where));
+            $totalSql->where(implode(' OR ', $where));
+        }
+
+        $conn = Db::readOnly();
+
+        $results = $conn->getArray($sql);
+        $orders = ObjectModel::hydrateCollection(Order::class, $results, Context::getContext()->language->id);
+
+        $total = $conn->getValue($totalSql);
+
+        return new OrderListResponse(
+            $orders,
+            $page,
+            $pageSize,
+            $total,
+            $search
+        );
     }
 
 }
