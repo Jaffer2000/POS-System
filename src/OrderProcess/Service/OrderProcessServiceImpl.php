@@ -2,9 +2,10 @@
 
 namespace Thirtybees\Module\POS\OrderProcess\Service;
 
-use Carrier;
+use Address;
 use Cart;
 use Configuration;
+use Context;
 use Db;
 use DbQuery;
 use Order;
@@ -12,10 +13,13 @@ use PrestaShopException;
 use TbPOS;
 use Thirtybees\Module\POS\Auth\Model\Token;
 use Thirtybees\Module\POS\Auth\Service\AuthService;
+use Thirtybees\Module\POS\Customer\Service\CustomerService;
 use Thirtybees\Module\POS\Exception\ServerErrorException;
 use Thirtybees\Module\POS\OrderProcess\Model\OrderProcess;
 use Thirtybees\Module\POS\Payment\Method\PaymentMethod;
 use Thirtybees\Module\POS\Payment\PaymentMethods;
+use Thirtybees\Module\POS\Workstation\Model\Workstation;
+use Thirtybees\Module\POS\Workstation\Service\WorkstationService;
 use Throwable;
 use Tools;
 
@@ -34,15 +38,35 @@ class OrderProcessServiceImpl implements OrderProcessService
     private PaymentMethods $paymentMethods;
 
     /**
+     * @var CustomerService
+     */
+    private CustomerService $customerService;
+
+    /**
+     * @var WorkstationService
+     */
+    private WorkstationService $workstationService;
+
+    /**
      * @param TbPOS $module
      * @param AuthService $authService
      * @param PaymentMethods $paymentMethods
+     * @param CustomerService $customerService
+     * @param WorkstationService $workstationService
      */
-    public function __construct(TbPOS $module, AuthService $authService, PaymentMethods $paymentMethods)
+    public function __construct(
+        TbPOS $module,
+        AuthService $authService,
+        PaymentMethods $paymentMethods,
+        CustomerService $customerService,
+        WorkstationService $workstationService
+    )
     {
         $this->module = $module;
         $this->authService = $authService;
         $this->paymentMethods = $paymentMethods;
+        $this->customerService = $customerService;
+        $this->workstationService = $workstationService;
     }
 
 
@@ -118,18 +142,21 @@ class OrderProcessServiceImpl implements OrderProcessService
      * @param PaymentMethod $paymentMethod
      * @param float $amount
      * @param array $paymentMethodData
+     * @param Workstation $workstation
      *
      * @return OrderProcess
+     *
      * @throws PrestaShopException
      */
     public function acceptPayment(
         OrderProcess $orderProcess,
         PaymentMethod $paymentMethod,
         float $amount,
-        array $paymentMethodData
+        array $paymentMethodData,
+        Workstation $workstation
     ): OrderProcess
     {
-        $order = $this->createOrder($orderProcess->getCart(), $amount, $paymentMethod);
+        $order = $this->createOrder($orderProcess->getCart(), $amount, $paymentMethod, $workstation);
         // TODO: save order id
         return $this->changeStatus($orderProcess, OrderProcess::STATUS_COMPLETED);
     }
@@ -148,12 +175,19 @@ class OrderProcessServiceImpl implements OrderProcessService
      * @param Cart $cart
      * @param float $amount
      * @param PaymentMethod $paymentMethod
+     * @param Workstation $workstation
+     *
      * @return Order
      *
      * @throws PrestaShopException
      */
-    private function createOrder(Cart $cart, float $amount, PaymentMethod $paymentMethod): Order
-    {
+    private function createOrder(
+        Cart $cart,
+        float $amount,
+        PaymentMethod $paymentMethod,
+        Workstation $workstation
+    ): Order {
+
         try {
             if ($this->module->validateOrder(
                 $cart->id,
@@ -179,19 +213,27 @@ class OrderProcessServiceImpl implements OrderProcessService
 
     /**
      * @param Token $token
+     *
      * @return OrderProcess
+     *
      * @throws PrestaShopException
      */
     public function createOrderProcess(Token $token): OrderProcess
     {
-        $carrier = Carrier::getCarrierByReference((int)Configuration::get("TBPOS_CARRIER"));
-        $carrierId = $carrier ? (int)$carrier->id : 0;
+        $workstation = $this->workstationService->findById($token->getWorkstationId());
+        if (! $workstation) {
+            throw new ServerErrorException("Workstation not found");
+        }
+        $customer = $this->customerService->getCustomerForWorkstation($workstation);
+        Context::getContext()->customer = $customer;
 
         $cart = new Cart();
         $cart->id_currency = (int)Configuration::get('PS_CURRENCY_DEFAULT');
-        $cart->id_customer = 0;
-        $cart->id_carrier = $carrierId;
+        $cart->id_customer = $customer->id;
+        $cart->setNoMultishipping();
         $cart->secure_key = md5(Tools::passwdGen(32));
+        $cart->id_address_delivery = Address::getFirstCustomerAddressId($customer->id);
+        $cart->id_address_invoice = Address::getFirstCustomerAddressId($customer->id);
         $cart->save();
 
         $conn = Db::getInstance();

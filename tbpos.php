@@ -56,7 +56,7 @@ class TbPOS extends PaymentModule
             $this->installDb($createTables) &&
             $this->registerHook('moduleRoutes') &&
             $this->registerHook('actionGetPrintNodeReports') &&
-            Configuration::updateGlobalValue('TBPOS_TOKEN_EXPIRATION', 3600)
+            $this->initSettings()
         );
     }
 
@@ -68,6 +68,7 @@ class TbPOS extends PaymentModule
     public function uninstall($full = true)
     {
         return (
+            $this->deleteSettings() &&
             parent::uninstall() &&
             $this->uninstallDb($full)
         );
@@ -196,6 +197,8 @@ class TbPOS extends PaymentModule
 
     /**
      * @return Factory
+     *
+     * @throws PrestaShopException
      */
     public function getFactory(): Factory
     {
@@ -222,9 +225,15 @@ class TbPOS extends PaymentModule
      */
     public function getContent()
     {
+        $settingsService = $this->getFactory()->getSettingsService();
+        $settings = $settingsService->getSettings();
+
         if (Tools::isSubmit('submitSave')) {
-            Configuration::updateGlobalValue('TBPOS_CARRIER', Tools::getIntValue('TBPOS_CARRIER'));
-            Configuration::updateGlobalValue('TBPOS_TOKEN_EXPIRATION', Tools::getIntValue('TBPOS_TOKEN_EXPIRATION'));
+            $settings->setCarrierId(Tools::getIntValue('INPUT_CARRIER'));
+            $settings->setTokenExpiration(Tools::getIntValue('INPUT_TOKEN_EXPIRATION'));
+            $settings->setDefaultAnonymousCustomerId(Tools::getIntValue('INPUT_DEFAULT_ANONYMOUS_CUSTOMER_ID'));
+            $settingsService->saveSettings($settings);
+
             Tools::redirectAdmin($this->context->link->getAdminLink('AdminModules', true, [
                 'configure' => $this->name,
                 'conf' => 6
@@ -239,6 +248,14 @@ class TbPOS extends PaymentModule
             ];
         }
 
+        $customers = [];
+        foreach (Customer::getCustomers(true) as $customer) {
+            $customers[] = [
+                'id' => (int)$customer['id_customer'],
+                'name' => $customer['firstname'] . ' ' . $customer['lastname'] . ' (' . $customer['email'] . ')',
+            ];
+        }
+
         $settingsForm = [
             'form' => [
                 'legend' => [
@@ -249,7 +266,7 @@ class TbPOS extends PaymentModule
                     [
                         'type'     => 'select',
                         'label'    => $this->l('Carrier'),
-                        'name'     => 'TBPOS_CARRIER',
+                        'name'     => 'INPUT_CARRIER',
                         'required' => true,
                         'options' => [
                             'query' => $carriers,
@@ -260,8 +277,19 @@ class TbPOS extends PaymentModule
                     [
                         'type'     => 'text',
                         'label'    => $this->l('Token expiration (seconds)'),
-                        'name'     => 'TBPOS_TOKEN_EXPIRATION',
+                        'name'     => 'INPUT_TOKEN_EXPIRATION',
                         'required' => true,
+                    ],
+                    [
+                        'type'     => 'select',
+                        'label'    => $this->l('Anonymous customer'),
+                        'name'     => 'INPUT_DEFAULT_ANONYMOUS_CUSTOMER_ID',
+                        'required' => true,
+                        'options' => [
+                            'query' => $customers,
+                            'id' => 'id',
+                            'name' => 'name'
+                        ]
                     ],
                 ],
                 'submit' => [
@@ -289,8 +317,9 @@ class TbPOS extends PaymentModule
         $helper->token = Tools::getAdminTokenLite('AdminModules');
         $helper->languages = $controller->getLanguages();
         $helper->fields_value = [
-            'TBPOS_CARRIER' => (int)Configuration::getGlobalValue('TBPOS_CARRIER'),
-            'TBPOS_TOKEN_EXPIRATION' => (int)Configuration::getGlobalValue('TBPOS_TOKEN_EXPIRATION'),
+            'INPUT_CARRIER' => $settings->getCarrierId(),
+            'INPUT_TOKEN_EXPIRATION' => $settings->getTokenExpiration(),
+            'INPUT_DEFAULT_ANONYMOUS_CUSTOMER_ID' => $settings->getDefaultAnonymousCustomerId(),
         ];
 
         return $helper->generateForm([ $settingsForm ]);
@@ -300,6 +329,7 @@ class TbPOS extends PaymentModule
      * @param array $params
      *
      * @return array
+     * @throws PrestaShopException
      */
     public function hookActionGetPrintNodeReports($params): array
     {
@@ -308,6 +338,29 @@ class TbPOS extends PaymentModule
             return $printnodeIntegratin->getReports($params['factory']);
         }
         return [];
+    }
+
+    /**
+     * @return bool
+     * @throws PrestaShopException
+     */
+    private function initSettings()
+    {
+        $settingsService = $this->getFactory()->getSettingsService();
+        $settings = $settingsService->getSettings();
+        $settings->setTokenExpiration(3600);
+        $settingsService->saveSettings($settings);
+        return true;
+    }
+
+    /**
+     * @return true
+     * @throws PrestaShopException
+     */
+    private function deleteSettings()
+    {
+        $this->getFactory()->getSettingsService()->deleteSettings();
+        return true;
     }
 
 }

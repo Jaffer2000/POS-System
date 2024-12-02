@@ -33,6 +33,7 @@ use Thirtybees\Module\POS\Payment\Method\CashPaymentMethod;
 use Thirtybees\Module\POS\Payment\Method\CreditCardOfflinePaymentMethod;
 use Thirtybees\Module\POS\Payment\Method\PaymentMethod;
 use Thirtybees\Module\POS\Sku\Service\SkuService;
+use Thirtybees\Module\POS\Workstation\Model\Workstation;
 
 /**
  * Copyright (C) 2022-2022 thirty bees <contact@thirtybees.com>
@@ -318,6 +319,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
                 $factory,
                 $this->getOrderProcess($token),
                 Tools::parseNumber($this->getParameter('amount', $body)),
+                $this->getWorkstation($factory, $token),
             );
         }
 
@@ -329,6 +331,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
                 $factory,
                 $this->getOrderProcess($token),
                 Tools::parseNumber($this->getParameter('amount', $body)),
+                $this->getWorkstation($factory, $token),
             );
         }
 
@@ -574,9 +577,9 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         $diff = $quantity - $currentQuantity;
 
         if ($diff > 0) {
-            $result = $cart->updateQty($diff, $sku->productId, $sku->combinationId, 0, 'up');
+            $result = $cart->updateQty($diff, $sku->productId, $sku->combinationId, 0, 'up', $cart->id_address_delivery);
         } elseif ($diff < 0) {
-            $result = $cart->updateQty(abs($diff), $sku->productId, $sku->combinationId, 0, 'down');
+            $result = $cart->updateQty(abs($diff), $sku->productId, $sku->combinationId, 0, 'down', $cart->id_address_delivery);
         } else {
             $result = true;
         }
@@ -625,7 +628,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             }
         }
         if ($quantity > 0) {
-            $cart->updateQty($quantity, $sku->productId, $sku->combinationId, 0, 'down');
+            $cart->updateQty($quantity, $sku->productId, $sku->combinationId, 0, 'down', $cart->id_address_delivery);
         }
         return new OrderProcessResponse($orderProcess);
     }
@@ -798,16 +801,23 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
     }
 
 
-        /**
+    /**
      * @param Factory $factory
      * @param OrderProcess $orderProcess
      * @param float $amount
+     * @param Workstation $workstation
      *
      * @return InvalidAmountCollectedResponse|BadRequestResponse
      *
+     * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
-    private function processPaymentCash(Factory $factory, OrderProcess $orderProcess, float $amount)
+    private function processPaymentCash(
+        Factory $factory,
+        OrderProcess $orderProcess,
+        float $amount,
+        Workstation $workstation
+    )
         : InvalidAmountCollectedResponse
         | BadRequestResponse
         | OrderProcessResponse
@@ -830,7 +840,13 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             return new InvalidAmountCollectedResponse($amount, $total);
         }
         $orderProcessService = $this->module->getFactory()->getOrderProcessService();
-        $orderProcess = $orderProcessService->acceptPayment($orderProcess, $paymentMethod, $amount, []);
+        $orderProcess = $orderProcessService->acceptPayment(
+            $orderProcess,
+            $paymentMethod,
+            $amount,
+            [],
+            $workstation
+        );
         return new OrderProcessResponse($orderProcess);
     }
 
@@ -838,15 +854,20 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      * @param Factory $factory
      * @param OrderProcess $orderProcess
      * @param float $amount
+     * @param Workstation $workstation
      *
      * @return InvalidAmountCollectedResponse|BadRequestResponse
      *
      * @throws PrestaShopException
      */
-    private function processPaymentCardOffline(Factory $factory, OrderProcess $orderProcess, float $amount)
-        : InvalidAmountCollectedResponse
-        | BadRequestResponse
-        | OrderProcessResponse
+    private function processPaymentCardOffline(
+        Factory $factory,
+        OrderProcess $orderProcess,
+        float $amount,
+        Workstation $workstation
+    ) : InvalidAmountCollectedResponse
+       | BadRequestResponse
+       | OrderProcessResponse
     {
         $paymentMethod = $orderProcess->getPaymentMethod();
         if (! $paymentMethod) {
@@ -866,7 +887,13 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             return new InvalidAmountCollectedResponse($amount, $total);
         }
         $orderProcessService = $this->module->getFactory()->getOrderProcessService();
-        $orderProcess = $orderProcessService->acceptPayment($orderProcess, $paymentMethod, $amount, []);
+        $orderProcess = $orderProcessService->acceptPayment(
+            $orderProcess,
+            $paymentMethod,
+            $amount,
+            [],
+            $workstation
+        );
         return new OrderProcessResponse($orderProcess);
     }
 
@@ -925,6 +952,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      * @return PaymentMethod
      *
      * @throws InvalidRequestException
+     * @throws PrestaShopException
      */
     private function toPaymentMethod(string $param, string $paramName): PaymentMethod
     {
@@ -1201,6 +1229,22 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             return new OrderResponse($order);
         } else {
             return new NotFoundResponse("Order with id $orderId not found");
+        }
+    }
+
+    /**
+     * @param Factory $factory
+     * @param Token $token
+     * @return Workstation
+     *
+     * @throws PrestaShopException
+     */
+    private function getWorkstation(Factory $factory, Token $token): Workstation
+    {
+        try {
+            return $factory->getWorkstationService()->getById($token->getWorkstationId());
+        } catch (NotFoundException $e) {
+            throw new ServerErrorException("Failed to find workstation for token", 0, $e);
         }
     }
 

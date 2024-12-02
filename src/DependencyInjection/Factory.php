@@ -14,13 +14,18 @@
 
 namespace Thirtybees\Module\POS\DependencyInjection;
 
+use PrestaShopException;
 use TbPOS;
 use Thirtybees\Module\POS\Auth\Service\AuthService;
 use Thirtybees\Module\POS\Auth\Service\AuthServiceImpl;
+use Thirtybees\Module\POS\Customer\Service\CustomerService;
+use Thirtybees\Module\POS\Customer\Service\CustomerServiceImpl;
 use Thirtybees\Module\POS\Integration\PrintnodeIntegration;
 use Thirtybees\Module\POS\OrderProcess\Service\OrderProcessService;
 use Thirtybees\Module\POS\OrderProcess\Service\OrderProcessServiceImpl;
 use Thirtybees\Module\POS\Payment\PaymentMethods;
+use Thirtybees\Module\POS\Settings\Service\SettingsService;
+use Thirtybees\Module\POS\Settings\Service\SettingsServiceConfig;
 use Thirtybees\Module\POS\Sku\Service\SkuService;
 use Thirtybees\Module\POS\Sku\Service\SkuServiceImpl;
 use Thirtybees\Module\POS\Workstation\Service\WorkstationService;
@@ -59,9 +64,23 @@ class Factory
     private PrintnodeIntegration $printNodeIntegration;
 
     /**
+     * @var SettingsService
+     */
+    private SettingsService $settingsService;
+
+    /**
+     * @var CustomerService
+     */
+    private CustomerService $customerService;
+
+    /**
+     * @throws PrestaShopException
      */
     public function __construct(TbPOS $module)
     {
+        $this->settingsService = new SettingsServiceConfig();
+        $settings = $this->settingsService->getSettings();
+        $this->customerService = new CustomerServiceImpl($settings);
         $this->printNodeIntegration = new PrintnodeIntegration($module);
         $this->paymentMethods = new PaymentMethods();
         $this->workstationService = new WorkstationServiceImpl();
@@ -70,7 +89,9 @@ class Factory
         $this->orderProcessService = new OrderProcessServiceImpl(
             $module,
             $this->authService,
-            $this->paymentMethods
+            $this->paymentMethods,
+            $this->customerService,
+            $this->workstationService
         );
     }
 
@@ -120,6 +141,22 @@ class Factory
     public function getPrintnodeIntegration(): PrintnodeIntegration
     {
         return $this->printNodeIntegration;
+    }
+
+    /**
+     * @return SettingsService
+     */
+    public function getSettingsService(): SettingsService
+    {
+        return $this->settingsService;
+    }
+
+    /**
+     * @return CustomerService
+     */
+    public function getCustomerService(): CustomerService
+    {
+        return $this->customerService;
     }
 
 }
