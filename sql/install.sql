@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS `PREFIX_tbpos_workstation` (
     `name` VARCHAR(100) NOT NULL,
     `active` TINYINT(1) NOT NULL DEFAULT 1,
     `id_printer_receipt` INT(11) UNSIGNED NOT NULL DEFAULT 0,
+    `id_printer_regular` INT(11) UNSIGNED NOT NULL DEFAULT 0,
     PRIMARY KEY (`id_tbpos_workstation`)
 ) ENGINE=ENGINE_TYPE DEFAULT CHARSET=CHARSET_TYPE COLLATE=COLLATE_TYPE;
 

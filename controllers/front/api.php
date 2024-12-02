@@ -245,13 +245,15 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             );
         }
 
-        if ($url === 'orders/print-receipt') {
+        if ($url === 'orders/print-document') {
             $this->ensureMethod(static::METHOD_POST);
             $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
-            return $this->processPrintReceipt(
+            $body = $this->getBody();
+            return $this->processPrintDocument(
                 $factory,
-                $this->getOrderProcess($token),
-                $token
+                $this->getWorkstation($factory, $token),
+                (int)$this->getParameter('order_id', $body),
+                (string)$this->getParameter('print_type', $body),
             );
         }
 
@@ -1045,49 +1047,63 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
 
     /**
      * @param Factory $factory
-     * @param OrderProcess $orderProcess
-     * @param Token $token
-     * @return InvalidOrderStatusResponse|PrintReceiptResponse|BadRequestResponse|ServerErrorException
+     * @param Workstation $workstation
+     * @param int $orderId
+     * @param string $type
+     * @return PrintReceiptResponse|BadRequestResponse|NotFoundResponse
      *
      * @throws PrestaShopException
      */
-    private function processPrintReceipt(Factory $factory, OrderProcess $orderProcess, Token $token)
-        : InvalidOrderStatusResponse
-        | PrintReceiptResponse
-        | BadRequestResponse
-        | ServerErrorException
+    private function processPrintDocument(
+        Factory $factory,
+        Workstation  $workstation,
+        int $orderId,
+        string $type,
+    ) : NotFoundResponse
+       | PrintReceiptResponse
+       | BadRequestResponse
     {
-        if ($orderProcess->getStatus() === OrderProcess::STATUS_COMPLETED) {
-            $workstation = $factory->getWorkstationService()->findById($token->getWorkstationId());
-            if (! $workstation) {
-                return new ServerErrorException("Workstation not found");
-            }
-            $printerId = $workstation->getReceiptPrinterId();
-            if (! $printerId) {
-                return new BadRequestResponse("Workstation has no receipt printer assigned");
-            }
-            $printnodeIntegration = $factory->getPrintnodeIntegration();
-            if (! $printnodeIntegration->isEnabled()) {
-                return new BadRequestResponse("Printnode integration is not enabled");
-            }
 
-            $printService = $printnodeIntegration->getService();
-            try {
-                $printJob = $printService->print(
-                    'tbpos:receipt',
-                    (int)$orderProcess->getOrder()->id,
-                    $printerId,
-                    (int)Context::getContext()->shop->id,
-                    (int)Context::getContext()->language->id
-                );
-            } catch (Throwable $e) {
-                return new ServerErrorException($e->getMessage());
+        $printnodeIntegration = $factory->getPrintnodeIntegration();
+        if (! $printnodeIntegration->isEnabled()) {
+            throw new ServerErrorException("Printnode integration is not enabled");
+        }
 
-            }
+        $order = new Order($orderId);
+        if (! Validate::isLoadedObject($order)) {
+            return new NotFoundResponse("Order not found");
+        }
 
+        $type = strtoupper($type);
+        switch ($type) {
+            case 'RECEIPT':
+                $report = 'tbpos:receipt';
+                $printerId = $workstation->getReceiptPrinterId();
+                break;
+            case 'INVOICE':
+                $printerId = $workstation->getPrinterId();
+                $report = 'core:invoice';
+                break;
+            default:
+                return new BadRequestResponse("Invalid print type: ".$type);
+        }
+
+        if (! $printerId) {
+            return new BadRequestResponse("Workstation has no printer assigned for " . $type);
+        }
+
+        $printService = $printnodeIntegration->getService();
+        try {
+            $printJob = $printService->print(
+                $report,
+                (int)$orderId,
+                $printerId,
+                (int)Context::getContext()->shop->id,
+                (int)Context::getContext()->language->id
+            );
             return new PrintReceiptResponse($printerId, $printJob);
-        } else {
-            return new InvalidOrderStatusResponse(OrderProcess::STATUS_COMPLETED, $orderProcess->getStatus());
+        } catch (Throwable $e) {
+            throw new ServerErrorException($e->getMessage(), 0, $e);
         }
     }
 

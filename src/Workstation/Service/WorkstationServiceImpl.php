@@ -87,7 +87,8 @@ class WorkstationServiceImpl implements WorkstationService
             (int)$row['id_tbpos_workstation'],
             (string)$row['name'],
             (bool)$row['active'],
-            (int)$row['id_printer_receipt']
+            (int)$row['id_printer_receipt'],
+            (int)$row['id_printer_regular']
         );
     }
 

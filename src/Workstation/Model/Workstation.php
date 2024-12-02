@@ -38,17 +38,24 @@ class Workstation
     private int $receiptPrinterId;
 
     /**
+     * @var int
+     */
+    private int $printerId;
+
+    /**
      * @param int $id
      * @param string $name
      * @param bool|int $active
      * @param int $receiptPrinterId
+     * @param int $regularPrinterId
      */
-    public function __construct(int $id, string $name, bool $active, int $receiptPrinterId)
+    public function __construct(int $id, string $name, bool $active, int $receiptPrinterId, int $regularPrinterId)
     {
         $this->id = $id;
         $this->name = $name;
         $this->active = $active;
         $this->receiptPrinterId = $receiptPrinterId;
+        $this->printerId = $regularPrinterId;
     }
 
     /**
@@ -82,5 +89,14 @@ class Workstation
     {
         return $this->receiptPrinterId;
     }
+
+    /**
+     * @return int
+     */
+    public function getPrinterId(): int
+    {
+        return $this->printerId;
+    }
+
 
 }
