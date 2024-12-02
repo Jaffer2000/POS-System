@@ -54,6 +54,7 @@ class OrderResponse extends JSendSuccessResponse
             'id' => (int)$this->order->id,
             'reference' => (string)$this->order->reference,
             'date' => $this->order->date_add,
+            'payment_method' => (string)$this->order->payment,
             'customer' => trim($customer->firstname . ' ' . $customer->lastname),
             'total_tax_incl' => (float)$this->order->total_paid_tax_incl,
             'total_tax_excl' => (float)$this->order->total_paid_tax_excl,
