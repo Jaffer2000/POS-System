@@ -78,6 +78,65 @@ class WorkstationServiceImpl implements WorkstationService
     }
 
     /**
+     * @param Workstation $workstation
+     *
+     * @return bool
+     *
+     * @throws PrestaShopException
+     */
+    public function save(Workstation $workstation): bool
+    {
+        $conn = Db::getInstance();
+        $data = [
+            'name' => pSQL($workstation->getName()),
+            'active' => $workstation->isActive() ? 1 : 0,
+            'id_printer_receipt' => $workstation->getReceiptPrinterId(),
+            'id_printer_regular' => $workstation->getPrinterId(),
+        ];
+        $id = $workstation->getId();
+        if ($id > 0) {
+            return $conn->update('tbpos_workstation', $data, 'id_tbpos_workstation = ' . (int)$id);
+        } else {
+            return $conn->insert('tbpos_workstation', $data);
+        }
+    }
+
+    /**
+     * @param Workstation $workstation
+     *
+     * @return bool
+     *
+     * @throws PrestaShopException
+     */
+    public function canDelete(Workstation $workstation): bool
+    {
+        $conn = Db::readOnly();
+        $tokens = (int)$conn->getValue((new DbQuery())
+            ->select('COUNT(1)')
+            ->from('tbpos_token')
+            ->where('id_tbpos_workstation = ' . (int)$workstation->getId())
+        );
+        return $tokens === 0;
+    }
+
+    /**
+     * @param Workstation $workstation
+     *
+     * @return bool
+     *
+     * @throws PrestaShopException
+     */
+    public function delete(Workstation $workstation): bool
+    {
+        if ($this->canDelete($workstation)) {
+            $conn = Db::getInstance();
+            return $conn->delete('tbpos_workstation', 'id_tbpos_workstation = ' . (int)$workstation->getId());
+        }
+        return false;
+    }
+
+
+    /**
      * @param array $row
      * @return Workstation
      */
@@ -91,6 +150,5 @@ class WorkstationServiceImpl implements WorkstationService
             (int)$row['id_printer_regular']
         );
     }
-
 
 }

@@ -54,6 +54,7 @@ class TbPOS extends PaymentModule
         return (
             parent::install() &&
             $this->installDb($createTables) &&
+            $this->installTabs() &&
             $this->registerHook('moduleRoutes') &&
             $this->registerHook('actionGetPrintNodeReports') &&
             $this->initSettings()
@@ -69,6 +70,7 @@ class TbPOS extends PaymentModule
     {
         return (
             $this->deleteSettings() &&
+            $this->removeTabs() &&
             parent::uninstall() &&
             $this->uninstallDb($full)
         );
@@ -112,6 +114,59 @@ class TbPOS extends PaymentModule
             return true;
         }
         return $this->executeSqlScript('uninstall', false);
+    }
+
+
+    /**
+     * @return true
+     * @throws PrestaShopException
+     */
+    private function installTabs()
+    {
+        $wms = $this->installTab(AdminTbPosWorkstationController::class, $this->l('POS system'), 0);
+        $this->installTab(AdminTbPosWorkstationController::class, $this->l('Work stations'), $wms);
+        return true;
+    }
+
+    /**
+     * Adds menu item
+     *
+     * @param string $controllerName
+     * @param string $name
+     * @param int $parentId
+     *
+     * @return int
+     * @throws PrestaShopException
+     */
+    private function installTab($controllerName, $name, $parentId)
+    {
+        $tab = new Tab();
+        $tab->module = $this->name;
+        $tab->class_name = str_replace("Controller", "", $controllerName);
+        $tab->id_parent = $parentId;
+        foreach (Language::getLanguages() as $lang) {
+            $tab->name[$lang['id_lang']] = $name;
+        }
+
+        $tab->save();
+        return (int)$tab->id;
+    }
+
+    /**
+     * Removes menu items
+     *
+     * @return boolean
+     * @throws PrestaShopException
+     */
+    private function removeTabs()
+    {
+        $tabs = Tab::getCollectionFromModule($this->name);
+        foreach ($tabs as $tab) {
+            if (! $tab->delete()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

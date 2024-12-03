@@ -50,5 +50,32 @@ interface WorkstationService
      */
     public function findAll(bool $active = true): array;
 
+    /**
+     * @param Workstation $workstation
+     *
+     * @return bool
+     *
+     * @throws PrestaShopException
+     */
+    public function save(Workstation $workstation): bool;
+
+    /**
+     * @param Workstation $workstation
+     *
+     * @return bool
+     *
+     * @throws PrestaShopException
+     */
+    public function canDelete(Workstation $workstation): bool;
+
+    /**
+     * @param Workstation $workstation
+     *
+     * @return bool
+     *
+     * @throws PrestaShopException
+     */
+    public function delete(Workstation $workstation): bool;
+
 
 }

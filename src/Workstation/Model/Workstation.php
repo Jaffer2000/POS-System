@@ -59,6 +59,20 @@ class Workstation
     }
 
     /**
+     * @return Workstation
+     */
+    public static function empty(): Workstation
+    {
+        return new static(
+            0,
+            '',
+            true,
+            0,
+            0
+        );
+    }
+
+    /**
      * @return int
      */
     public function getId(): int
@@ -98,5 +112,44 @@ class Workstation
         return $this->printerId;
     }
 
+    /**
+     * @param string $name
+     * @return $this
+     */
+    public function setName(string $name): Workstation
+    {
+        $this->name = $name;
+        return $this;
+    }
+
+    /**
+     * @param bool $active
+     * @return $this
+     */
+    public function setActive(bool $active): Workstation
+    {
+        $this->active = $active;
+        return $this;
+    }
+
+    /**
+     * @param int $receiptPrinterId
+     * @return $this
+     */
+    public function setReceiptPrinterId(int $receiptPrinterId): Workstation
+    {
+        $this->receiptPrinterId = $receiptPrinterId;
+        return $this;
+    }
+
+    /**
+     * @param int $printerId
+     * @return $this
+     */
+    public function setPrinterId(int $printerId): Workstation
+    {
+        $this->printerId = $printerId;
+        return $this;
+    }
 
 }

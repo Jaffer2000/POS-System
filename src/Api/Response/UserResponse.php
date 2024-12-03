@@ -36,22 +36,7 @@ class UserResponse extends JSendSuccessResponse
         $employee = $this->user->getEmployee();
         $token = $this->user->getToken();
         $workstation = $factory->getWorkstationService()->getById($token->getWorkstationId());
-
-        $printnodeIntegratin = $factory->getPrintnodeIntegration();
-        $receiptPrinter = [
-            'id' => 0,
-            'name' => 'No receipt printer'
-        ];
-        $receiptPrinterId = $workstation->getReceiptPrinterId();
-        if ($receiptPrinterId && $printnodeIntegratin->isEnabled()) {
-            $service = $printnodeIntegratin->getService();
-            $printers = $service->getPrinters();
-            if (isset($printers[$receiptPrinterId])) {
-                $printer = $printers[$receiptPrinterId];
-                $receiptPrinter['id'] = $printer->getId();
-                $receiptPrinter['name'] = $printer->getName();
-            }
-        }
+        $workstationResponse = new WorkstationResponse($workstation);
 
         return [
             'username' => (string)$employee->email,
@@ -62,11 +47,7 @@ class UserResponse extends JSendSuccessResponse
                 'value' => $token->getValue(),
                 'expiresIn' =>  $token->getExpiresIn(),
             ],
-            'workstation' => [
-                'id' => $workstation->getId(),
-                'name' => $workstation->getName(),
-                'receiptPrinter' => $receiptPrinter,
-            ]
+            'workstation' => $workstationResponse->getData($factory)
         ];
     }
 }

@@ -49,4 +49,4 @@ FROM PREFIX_employee;
 
 -- DUMMY DATA
 INSERT INTO PREFIX_tbpos_workstation(name, active)
-VALUES ('Cash register 1', 1), ('Cash register 2', 1), ('Cash register 3 - disabled', 0);
+VALUES ('Cash register 1', 1);

@@ -2,6 +2,7 @@
 
 namespace Thirtybees\Module\POS\Api\Response;
 
+use PrestaShopException;
 use Thirtybees\Module\POS\DependencyInjection\Factory;
 use Thirtybees\Module\POS\Workstation\Model\Workstation;
 
@@ -28,15 +29,15 @@ class GetWorkstationListResponse extends JSendSuccessResponse
      * @param Factory $factory
      *
      * @return array
+     *
+     * @throws PrestaShopException
      */
     public function getData(Factory $factory): array
     {
         $resp = [];
         foreach ($this->list as $workstation) {
-            $resp[] = [
-                'id' => $workstation->getId(),
-                'name' => $workstation->getName(),
-            ];
+            $workstationResponse = new WorkstationResponse($workstation);
+            $resp[] = $workstationResponse->getData($factory);
         }
         return $resp;
     }
