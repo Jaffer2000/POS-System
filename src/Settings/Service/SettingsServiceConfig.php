@@ -9,9 +9,9 @@ use Thirtybees\Module\POS\Settings\Model\Settings;
 
 class SettingsServiceConfig implements SettingsService
 {
-    const SETTINGS_CARRIER_ID = 'TBPOS_CARRIER';
     const SETTINGS_TOKEN_EXPIRATION = 'TBPOS_TOKEN_EXPIRATION';
     const SETTINGS_DEFAULT_ANONYMOUS_CUSTOMER_ID = 'TBPOS_ANONYMOUS_CUSTOMER_ID';
+    const SETTINGS_ORDER_STATUS_ID = 'TBPOS_ORDER_STATUS_ID';
 
     /**
      * @var Settings
@@ -24,7 +24,7 @@ class SettingsServiceConfig implements SettingsService
     public function __construct()
     {
         $this->settings =((new Settings())
-            ->setCarrierId($this->getIntValue(static::SETTINGS_CARRIER_ID))
+            ->setOrderStatusId($this->getIntValue(static::SETTINGS_ORDER_STATUS_ID))
             ->setDefaultAnonymousCustomerId($this->getIntValue(static::SETTINGS_DEFAULT_ANONYMOUS_CUSTOMER_ID))
             ->setTokenExpiration($this->getIntValue(static::SETTINGS_TOKEN_EXPIRATION, 3600))
         );
@@ -49,7 +49,7 @@ class SettingsServiceConfig implements SettingsService
     public function saveSettings(Settings $settings): Settings
     {
         $this->settings = $settings;
-        $this->setIntValue(static::SETTINGS_CARRIER_ID, $settings->getCarrierId());
+        $this->setIntValue(static::SETTINGS_ORDER_STATUS_ID, $settings->getOrderStatusId());
         $this->setIntValue(static::SETTINGS_DEFAULT_ANONYMOUS_CUSTOMER_ID, $settings->getDefaultAnonymousCustomerId());
         $this->setIntValue(static::SETTINGS_TOKEN_EXPIRATION, $settings->getTokenExpiration());
         return $settings;

@@ -18,6 +18,7 @@ use Thirtybees\Module\POS\Exception\ServerErrorException;
 use Thirtybees\Module\POS\OrderProcess\Model\OrderProcess;
 use Thirtybees\Module\POS\Payment\Method\PaymentMethod;
 use Thirtybees\Module\POS\Payment\PaymentMethods;
+use Thirtybees\Module\POS\Settings\Service\SettingsService;
 use Thirtybees\Module\POS\Workstation\Model\Workstation;
 use Thirtybees\Module\POS\Workstation\Service\WorkstationService;
 use Throwable;
@@ -48,18 +49,25 @@ class OrderProcessServiceImpl implements OrderProcessService
     private WorkstationService $workstationService;
 
     /**
+     * @var SettingsService
+     */
+    private SettingsService $settingsService;
+
+    /**
      * @param TbPOS $module
      * @param AuthService $authService
      * @param PaymentMethods $paymentMethods
      * @param CustomerService $customerService
      * @param WorkstationService $workstationService
+     * @param SettingsService $settingsService
      */
     public function __construct(
-        TbPOS $module,
-        AuthService $authService,
-        PaymentMethods $paymentMethods,
-        CustomerService $customerService,
-        WorkstationService $workstationService
+        TbPOS              $module,
+        AuthService        $authService,
+        PaymentMethods     $paymentMethods,
+        CustomerService    $customerService,
+        WorkstationService $workstationService,
+        SettingsService    $settingsService
     )
     {
         $this->module = $module;
@@ -67,6 +75,7 @@ class OrderProcessServiceImpl implements OrderProcessService
         $this->paymentMethods = $paymentMethods;
         $this->customerService = $customerService;
         $this->workstationService = $workstationService;
+        $this->settingsService = $settingsService;
     }
 
 
@@ -191,7 +200,7 @@ class OrderProcessServiceImpl implements OrderProcessService
         try {
             if ($this->module->validateOrder(
                 $cart->id,
-                Configuration::get('PS_OS_BANKWIRE'),
+                $this->settingsService->getSettings()->getOrderStatusId(),
                 $amount,
                 $this->module->displayName,
                 null,

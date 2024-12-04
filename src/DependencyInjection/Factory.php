@@ -91,7 +91,8 @@ class Factory
             $this->authService,
             $this->paymentMethods,
             $this->customerService,
-            $this->workstationService
+            $this->workstationService,
+            $this->settingsService
         );
     }
 

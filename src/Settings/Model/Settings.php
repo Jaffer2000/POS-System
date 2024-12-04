@@ -12,7 +12,7 @@ class Settings
     /**
      * @var int
      */
-    private int $carrierId;
+    private int $orderStatusId;
 
     /**
      * @var int
@@ -30,9 +30,9 @@ class Settings
     /**
      * @return int
      */
-    public function getCarrierId(): int
+    public function getOrderStatusId(): int
     {
-        return $this->carrierId;
+        return $this->orderStatusId;
     }
 
     /**
@@ -46,12 +46,12 @@ class Settings
     }
 
     /**
-     * @param int $carrierId
+     * @param int $orderStatusId
      * @return $this
      */
-    public function setCarrierId(int $carrierId): Settings
+    public function setOrderStatusId(int $orderStatusId): Settings
     {
-        $this->carrierId = $carrierId;
+        $this->orderStatusId = $orderStatusId;
         return $this;
     }
 

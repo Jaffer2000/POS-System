@@ -284,7 +284,7 @@ class TbPOS extends PaymentModule
         $settings = $settingsService->getSettings();
 
         if (Tools::isSubmit('submitSave')) {
-            $settings->setCarrierId(Tools::getIntValue('INPUT_CARRIER'));
+            $settings->setOrderStatusId(Tools::getIntValue('INPUT_ORDER_STATUS_ID'));
             $settings->setTokenExpiration(Tools::getIntValue('INPUT_TOKEN_EXPIRATION'));
             $settings->setDefaultAnonymousCustomerId(Tools::getIntValue('INPUT_DEFAULT_ANONYMOUS_CUSTOMER_ID'));
             $settingsService->saveSettings($settings);
@@ -295,11 +295,11 @@ class TbPOS extends PaymentModule
             ]));
         }
 
-        $carriers = [];
-        foreach (Carrier::getCarriers($this->context->language->id, true) as $carrier) {
-            $carriers[] = [
-                'id' => (int)$carrier['id_reference'],
-                'name' =>  $carrier['name']
+        $statuses = [];
+        foreach (OrderState::getOrderStates($this->context->language->id) as $status) {
+            $statuses[] = [
+                'id' => (int)$status['id_order_state'],
+                'name' =>  $status['name']
             ];
         }
 
@@ -320,11 +320,11 @@ class TbPOS extends PaymentModule
                 'input' => [
                     [
                         'type'     => 'select',
-                        'label'    => $this->l('Carrier'),
-                        'name'     => 'INPUT_CARRIER',
+                        'label'    => $this->l('Paid order status'),
+                        'name'     => 'INPUT_ORDER_STATUS_ID',
                         'required' => true,
                         'options' => [
-                            'query' => $carriers,
+                            'query' => $statuses,
                             'id' => 'id',
                             'name' => 'name'
                         ]
@@ -372,7 +372,7 @@ class TbPOS extends PaymentModule
         $helper->token = Tools::getAdminTokenLite('AdminModules');
         $helper->languages = $controller->getLanguages();
         $helper->fields_value = [
-            'INPUT_CARRIER' => $settings->getCarrierId(),
+            'INPUT_ORDER_STATUS_ID' => $settings->getOrderStatusId(),
             'INPUT_TOKEN_EXPIRATION' => $settings->getTokenExpiration(),
             'INPUT_DEFAULT_ANONYMOUS_CUSTOMER_ID' => $settings->getDefaultAnonymousCustomerId(),
         ];

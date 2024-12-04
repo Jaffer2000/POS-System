@@ -1079,10 +1079,17 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             case 'RECEIPT':
                 $report = 'tbpos:receipt';
                 $printerId = $workstation->getReceiptPrinterId();
+                $entityId = $orderId;
                 break;
             case 'INVOICE':
+                /** @var OrderInvoice $orderInvoice */
+                $orderInvoice = $order->getInvoicesCollection()->getFirst();
+                if (! Validate::isLoadedObject($orderInvoice)) {
+                    return new BadRequestResponse("Invoice does not exists for order ".$$orderId);
+                }
                 $printerId = $workstation->getPrinterId();
                 $report = 'core:invoice';
+                $entityId = (int)$orderInvoice->id;
                 break;
             default:
                 return new BadRequestResponse("Invalid print type: ".$type);
@@ -1096,7 +1103,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         try {
             $printJob = $printService->print(
                 $report,
-                (int)$orderId,
+                $entityId,
                 $printerId,
                 (int)Context::getContext()->shop->id,
                 (int)Context::getContext()->language->id
