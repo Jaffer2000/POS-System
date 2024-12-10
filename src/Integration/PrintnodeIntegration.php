@@ -9,8 +9,8 @@ use Employee as CoreEmployee;
 use PrintNodeModule\DependencyInjection\Factory as PrintNodeFactory;
 use PrintNodeModule\EntityType\OrderEntityType;
 use PrintNodeModule\Exception\NotFoundException;
-use PrintNodeModule\Model\PageFormat;
 use PrintNodeModule\Model\Report as PrintNodeReport;
+use PrintNodeModule\Renderer\EscPosRawRenderer;
 use PrintNodeModule\Response\ListResponse;
 use PrintNodeModule\Response\PrinterResponse;
 use PrintNodeModule\Response\ReportResponse;
@@ -112,13 +112,9 @@ class PrintnodeIntegration
     private function receiptReport(PrintNodeFactory $factory): PrintNodeReport
     {
         $entityTypeService = $factory->getEntityTypeService();
-        $printersService = $factory->getPrintersService();
-
         $entityType = $entityTypeService->getEntityType(OrderEntityType::TYPE);
-        $pageFormat = new PageFormat("Custom", 1000, 2102);
-        $printers = $printersService->getPrintersByPaperSize($pageFormat);
-        $renderer = new PrintnodeReceiptRenderer($this->moduleName, $pageFormat);
-        return new PrintNodeReport($this->moduleName . ':receipt', 'Receipt', $pageFormat, $entityType, $printers, $renderer);
+        $renderer = new EscPosRawRenderer(_PS_MODULE_DIR_ . $this->moduleName . '/print/esc-pos/receipt.tpl');
+        return new PrintNodeReport($this->moduleName . ':receipt', 'Receipt', $entityType, $renderer);
     }
 
     /**
@@ -186,7 +182,7 @@ class PrintnodeIntegration
         $reports = $printNodeFactory->getReportsService()->getUsableReports($permissions);
         $resp = new ListResponse();
         foreach ($reports as $report) {
-            $resp->add(new ReportResponse($report));
+            $resp->add(new ReportResponse($report, $permissions));
         }
         return $resp->getResponse($printNodeFactory);
     }
