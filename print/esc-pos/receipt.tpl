@@ -2,7 +2,7 @@
 {INIT}
 {ESC hex="1B7400"}{* Select language page 0 *}
 
-{printImage filepath="./Images/imkershop-logo.jpg"}
+{LOGO}
 
 {* Header Section *}
 Oude Veerseweg 121{LF}
@@ -15,12 +15,12 @@ Factuur{LF}
 
 {* Product Details *}
 {foreach $entity->getProducts() as $product}
-{$product.product_quantity} {$product.product_name} {DASHES} {$product.unit_price_tax_incl} {$product.unit_price_tax_excl}{LF}
+{$product.product_quantity} {$product.product_name} {DASHES} {displayPrice currency=$entity->id_currency price=$product.unit_price_tax_incl} {displayPrice currency=$entity->id_currency price=$product.unit_price_tax_excl}{LF}
 {/foreach}
 
 {* Totals *}
 {DASHES}{LF}
-Totaal {$entity->total_paid_tax_incl}{LF}
+Totaal {displayPrice currency=$entity->id_currency price=$entity->total_paid_tax_incl}{LF}
 Btw: {$entity->tax_rate} {LF}
 
 {* Payment Section *}
