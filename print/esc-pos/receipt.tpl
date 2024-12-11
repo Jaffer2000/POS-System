@@ -1,9 +1,39 @@
 {strip}
 {INIT}
-{ESC hex="1B7400"}{* select language page 0 *}
-Order #{$entity->reference}{LF}
+{ESC hex="1B7400"}{* Select language page 0 *}
+
+{printImage filepath="./Images/imkershop-logo.jpg"}
+
+{* Header Section *}
+Oude Veerseweg 121{LF}
+4332 SJ Middelburg{LF}
+www.imkershop.nl{LF}{LF}
+
+{* Title *}
+Factuur{LF}
+{DASHES}{LF}
+
+{* Product Details *}
 {foreach $entity->getProducts() as $product}
-{$product.product_name} - {$product.product_quantity}{LF}
+{$product.product_quantity} {$product.product_name} {DASHES} {$product.unit_price_tax_incl} {$product.unit_price_tax_excl}{LF}
 {/foreach}
+
+{* Totals *}
+{DASHES}{LF}
+Totaal {$entity->total_paid_tax_incl}{LF}
+Btw: {$entity->tax_rate} {LF}
+
+{* Payment Section *}
+{$entity->payment}{LF}
+{date('H:i d/m/Y')} Kassa 1 {LF}
+{$entity->invoice_number}{LF} / {$entity->reference}{LF} {$entity->invoice_date}{LF}  
+{DASHES}{LF}
+
+{* Footer Section *}
+Bedankt voor uw aankoop!{LF}
+Niet blij met uw aankoop?{LF}
+Retourneren binnen 60 dagen met bon.{LF}
+{QR_CODE data="{$entity->reference}"}{LF}
+
 {FULL_CUT}
 {/strip}
