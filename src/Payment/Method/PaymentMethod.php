@@ -16,4 +16,9 @@ interface PaymentMethod
      * @return array
      */
     public function getActionData(OrderProcess $orderProcess): array;
+
+    /**
+     * @return string
+     */
+    public function getName(): string;
 }

@@ -14,6 +14,7 @@ use TbPOS;
 use Thirtybees\Module\POS\Auth\Model\Token;
 use Thirtybees\Module\POS\Auth\Service\AuthService;
 use Thirtybees\Module\POS\Customer\Service\CustomerService;
+use Thirtybees\Module\POS\Exception\NotFoundException;
 use Thirtybees\Module\POS\Exception\ServerErrorException;
 use Thirtybees\Module\POS\OrderProcess\Model\OrderProcess;
 use Thirtybees\Module\POS\Payment\Method\PaymentMethod;
@@ -84,6 +85,7 @@ class OrderProcessServiceImpl implements OrderProcessService
      *
      * @return OrderProcess
      *
+     * @throws NotFoundException
      * @throws PrestaShopException
      */
     public function getFromToken(Token $token): OrderProcess
@@ -116,7 +118,8 @@ class OrderProcessServiceImpl implements OrderProcessService
             $orderProcess->getId(),
             $status,
             $orderProcess->getPaymentMethod(),
-            $orderProcess->getCart()
+            $orderProcess->getCart(),
+            $orderProcess->getWorkstation(),
         );
     }
 
@@ -142,7 +145,8 @@ class OrderProcessServiceImpl implements OrderProcessService
             $orderProcess->getId(),
             OrderProcess::STATUS_PROCESSING_PAYMENT,
             $paymentMethod,
-            $orderProcess->getCart()
+            $orderProcess->getCart(),
+            $orderProcess->getWorkstation(),
         );
     }
 
@@ -162,10 +166,9 @@ class OrderProcessServiceImpl implements OrderProcessService
         PaymentMethod $paymentMethod,
         float $amount,
         array $paymentMethodData,
-        Workstation $workstation
     ): OrderProcess
     {
-        $order = $this->createOrder($orderProcess->getCart(), $amount, $paymentMethod, $workstation);
+        $order = $this->createOrder($orderProcess->getCart(), $amount, $paymentMethod, $orderProcess->getWorkstation());
         // TODO: save order id
         return $this->changeStatus($orderProcess, OrderProcess::STATUS_COMPLETED);
     }
@@ -178,6 +181,28 @@ class OrderProcessServiceImpl implements OrderProcessService
     public function cancelPayment(OrderProcess  $orderProcess): OrderProcess
     {
         return $this->changeStatus($orderProcess, OrderProcess::STATUS_ACTIVE);
+    }
+
+    /**
+     * @param Order $order
+     * @return OrderProcess|null
+     *
+     * @throws NotFoundException
+     * @throws PrestaShopException
+     */
+    public function findForOrder(Order $order): ?OrderProcess
+    {
+        $cartId = (int)$order->id_cart;
+        $conn = Db::getInstance();
+        $row = $conn->getRow((new DbQuery())
+            ->select('*')
+            ->from('tbpos_order_process', 'p')
+            ->where('id_cart = ' . $cartId)
+        );
+        if ($row) {
+            return $this->returnOrderProcess($row);
+        }
+        return null;
     }
 
     /**
@@ -257,7 +282,8 @@ class OrderProcessServiceImpl implements OrderProcessService
             $orderProcessId,
             OrderProcess::STATUS_ACTIVE,
             null,
-            $cart
+            $cart,
+            $workstation
         );
         $this->authService->updateTokenProcess($token, $orderProcess);
         return $orderProcess;
@@ -267,6 +293,7 @@ class OrderProcessServiceImpl implements OrderProcessService
      * @param int $orderProcessId
      * @return OrderProcess|null
      *
+     * @throws NotFoundException
      * @throws PrestaShopException
      */
     private function findOrderProcess(int $orderProcessId): ?OrderProcess
@@ -279,15 +306,30 @@ class OrderProcessServiceImpl implements OrderProcessService
         $row = $conn->getRow($sql);
 
         if ($row) {
-            $paymentMethodId = (string)$row['payment_method'];
-            $cart = new Cart($row['id_cart']);
-            return new OrderProcess(
-                $orderProcessId,
-                (string)$row['status'],
-                $this->paymentMethods->findMethod($paymentMethodId),
-                $cart
-            );
+            return $this->returnOrderProcess($row);
         }
         return null;
+    }
+
+    /**
+     * @param array $row
+     * @return OrderProcess
+     * @throws PrestaShopException
+     * @throws NotFoundException
+     */
+    public function returnOrderProcess(array $row): OrderProcess
+    {
+        $cart = new Cart((int)$row['id_cart']);
+        $tokenId = (int)$row['id_tbpos_token'];
+        $token = $this->authService->getTokenById($tokenId);
+        $workstation = $this->workstationService->getById($token->getWorkstationId());
+
+        return new OrderProcess(
+            (int)$row['id_tbpos_order_process'],
+            (string)$row['status'],
+            $this->paymentMethods->findMethod((string)$row['payment_method']),
+            $cart,
+            $workstation
+        );
     }
 }

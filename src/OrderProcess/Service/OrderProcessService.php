@@ -2,11 +2,11 @@
 
 namespace Thirtybees\Module\POS\OrderProcess\Service;
 
+use Order;
 use PrestaShopException;
 use Thirtybees\Module\POS\Auth\Model\Token;
 use Thirtybees\Module\POS\OrderProcess\Model\OrderProcess;
 use Thirtybees\Module\POS\Payment\Method\PaymentMethod;
-use Thirtybees\Module\POS\Workstation\Model\Workstation;
 
 interface OrderProcessService
 {
@@ -46,7 +46,6 @@ interface OrderProcessService
      * @param PaymentMethod $paymentMethod
      * @param float $amount
      * @param array $paymentMethodData
-     * @param Workstation $workstation
      *
      * @return OrderProcess
      * @throws PrestaShopException
@@ -56,7 +55,6 @@ interface OrderProcessService
         PaymentMethod $paymentMethod,
         float $amount,
         array $paymentMethodData,
-        Workstation $workstation
     ): OrderProcess;
 
     /**
@@ -66,4 +64,13 @@ interface OrderProcessService
      * @throws PrestaShopException
      */
     public function cancelPayment(OrderProcess $orderProcess);
+
+    /**
+     * @param Order $order
+     *
+     * @return OrderProcess|null
+     *
+     * @throws PrestaShopException
+     */
+    public function findForOrder(Order $order): ?OrderProcess;
 }

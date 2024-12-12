@@ -81,7 +81,6 @@ class Factory
         $this->settingsService = new SettingsServiceConfig();
         $settings = $this->settingsService->getSettings();
         $this->customerService = new CustomerServiceImpl($settings);
-        $this->printNodeIntegration = new PrintnodeIntegration($module);
         $this->paymentMethods = new PaymentMethods();
         $this->workstationService = new WorkstationServiceImpl();
         $this->skuService = new SkuServiceImpl();
@@ -94,6 +93,7 @@ class Factory
             $this->workstationService,
             $this->settingsService
         );
+        $this->printNodeIntegration = new PrintnodeIntegration($module, $this->orderProcessService);
     }
 
     /**

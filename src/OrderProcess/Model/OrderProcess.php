@@ -9,6 +9,7 @@ use PrestaShopException;
 use Thirtybees\Module\POS\Exception\ServerErrorException;
 use Thirtybees\Module\POS\Payment\Method\PaymentMethod;
 use Thirtybees\Module\POS\Workstation\Model\Workstation;
+use Thirtybees\Module\POS\Workstation\Service\WorkstationService;
 use Validate;
 
 class OrderProcess
@@ -40,6 +41,11 @@ class OrderProcess
     private ?PaymentMethod $paymentMethod;
 
     /**
+     * @var Workstation
+     */
+    private Workstation $workstation;
+
+    /**
      * @return PaymentMethod|null
      */
     public function getPaymentMethod(): ?PaymentMethod
@@ -52,17 +58,20 @@ class OrderProcess
      * @param string $status
      * @param PaymentMethod|null $paymentMethod
      * @param Cart $cart
+     * @param Workstation $workstation
      */
     public function __construct(
         int $id,
         string $status,
         ?PaymentMethod $paymentMethod,
-        Cart $cart
+        Cart $cart,
+        Workstation $workstation,
     ) {
         $this->id = (int)$id;
         $this->status = static::validStatus($status);
         $this->paymentMethod = $paymentMethod;
         $this->cart = $cart;
+        $this->workstation = $workstation;
     }
 
     /**
@@ -171,6 +180,14 @@ class OrderProcess
             return $order;
         }
         throw new ServerErrorException("Invalid order status: " . $this->status);
+    }
+
+    /**
+     * @return Workstation
+     */
+    public function getWorkstation(): Workstation
+    {
+        return $this->workstation;
     }
 
 }

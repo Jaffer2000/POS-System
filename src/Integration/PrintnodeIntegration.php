@@ -10,13 +10,13 @@ use PrintNodeModule\DependencyInjection\Factory as PrintNodeFactory;
 use PrintNodeModule\EntityType\OrderEntityType;
 use PrintNodeModule\Exception\NotFoundException;
 use PrintNodeModule\Model\Report as PrintNodeReport;
-use PrintNodeModule\Renderer\EscPosRawRenderer;
 use PrintNodeModule\Response\ListResponse;
 use PrintNodeModule\Response\PrinterResponse;
 use PrintNodeModule\Response\ReportResponse;
 use PrintNodeModule\Service\PrintNodeService;
 use RuntimeException;
 use TbPOS;
+use Thirtybees\Module\POS\OrderProcess\Service\OrderProcessService;
 
 class PrintnodeIntegration
 {
@@ -32,10 +32,16 @@ class PrintnodeIntegration
     private string $moduleName;
 
     /**
+     * @var OrderProcessService
+     */
+    private OrderProcessService $orderProcessService;
+
+    /**
      * @throws PrestaShopException
      */
-    public function __construct(TbPos $module)
+    public function __construct(TbPos $module, OrderProcessService $orderProcessService)
     {
+        $this->orderProcessService = $orderProcessService;
         $this->moduleName = (string)$module->name;
         $printNode = Module::getInstanceByName('printnode');
         if ($printNode) {
@@ -90,16 +96,15 @@ class PrintnodeIntegration
      * @param PrintNodeFactory $factory
      *
      * @return PrintNodeReport[]
+     *
+     * @throws NotFoundException
+     * @throws PrestaShopException
      */
     public function getReports(PrintNodeFactory $factory): array
     {
-        try {
-            return [
-                $this->receiptReport($factory),
-            ];
-        } catch (\Throwable $e) {
-            return [];
-        }
+        return [
+            $this->receiptReport($factory),
+        ];
     }
 
     /**
@@ -113,7 +118,10 @@ class PrintnodeIntegration
     {
         $entityTypeService = $factory->getEntityTypeService();
         $entityType = $entityTypeService->getEntityType(OrderEntityType::TYPE);
-        $renderer = new EscPosRawRenderer(_PS_MODULE_DIR_ . $this->moduleName . '/print/esc-pos/receipt.tpl');
+        $renderer = new ReceiptRenderer(
+            $this->moduleName,
+            $this->orderProcessService,
+        );
         return new PrintNodeReport($this->moduleName . ':receipt', 'Receipt', $entityType, $renderer);
     }
 

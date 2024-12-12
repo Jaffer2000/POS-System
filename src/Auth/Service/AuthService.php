@@ -19,6 +19,7 @@ use PrestaShopException;
 use Thirtybees\Module\POS\Auth\Model\Token;
 use Thirtybees\Module\POS\Auth\Model\User;
 use Thirtybees\Module\POS\Exception\AccessDeniedException;
+use Thirtybees\Module\POS\Exception\NotFoundException;
 use Thirtybees\Module\POS\Exception\UnauthorizedException;
 use Thirtybees\Module\POS\OrderProcess\Model\OrderProcess;
 use Thirtybees\Module\POS\Workstation\Model\Workstation;
@@ -43,6 +44,15 @@ interface AuthService
      * @throws PrestaShopException
      */
     public function findToken(string $value): ?Token;
+
+    /**
+     * @param int $tokenId
+     *
+     * @return Token
+     *
+     * @throws NotFoundException
+     */
+    public function getTokenById(int $tokenId): Token;
 
     /**
      * @param Token $token

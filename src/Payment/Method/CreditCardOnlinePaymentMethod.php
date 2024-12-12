@@ -26,4 +26,12 @@ class CreditCardOnlinePaymentMethod implements PaymentMethod
             'action' => 'AWAIT_PAYMENT_RESULT'
         ];
     }
+
+    /**
+     * @return string
+     */
+    public function getName(): string
+    {
+        return 'Credit card';
+    }
 }

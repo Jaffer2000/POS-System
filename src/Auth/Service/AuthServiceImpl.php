@@ -25,6 +25,7 @@ use Thirtybees\Module\POS\Auth\Model\Token;
 use Thirtybees\Module\POS\Auth\Model\User;
 use Thirtybees\Module\POS\Exception\AccessDeniedException;
 use Thirtybees\Module\POS\Exception\InvalidArgumentException;
+use Thirtybees\Module\POS\Exception\NotFoundException;
 use Thirtybees\Module\POS\Exception\ServerErrorException;
 use Thirtybees\Module\POS\OrderProcess\Model\OrderProcess;
 use Thirtybees\Module\POS\Workstation\Model\Workstation;
@@ -100,6 +101,38 @@ class AuthServiceImpl implements AuthService
         return new Token(
             (int)$row['id_tbpos_token'],
             $value,
+            (int)$row['id_employee'],
+            (int)$row['id_tbpos_workstation'],
+            (string)$row['role'],
+            (int)$row['id_tbpos_order_process'],
+            static::getDateTime((int)$row['generated']),
+            static::getDateTime((int)$row['expiration'])
+        );
+    }
+
+    /**
+     * @param int $tokenId
+     *
+     * @return Token
+     *
+     * @throws NotFoundException
+     * @throws PrestaShopException
+     */
+    public function getTokenById(int $tokenId): Token
+    {
+        $sql = (new DbQuery)
+            ->select('t.*')
+            ->from('tbpos_token', 't')
+            ->innerJoin('employee', 'e', '(e.id_employee = t.id_employee)')
+            ->where('t.id_tbpos_token = ' .$tokenId );
+
+        $row = Db::getInstance()->getRow($sql);
+        if ($row === false) {
+            throw new NotFoundException("Token with id $tokenId not found");
+        }
+        return new Token(
+            (int)$row['id_tbpos_token'],
+            (string)$row['value'],
             (int)$row['id_employee'],
             (int)$row['id_tbpos_workstation'],
             (string)$row['role'],

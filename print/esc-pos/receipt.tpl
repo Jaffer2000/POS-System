@@ -21,12 +21,13 @@ Factuur{LF}
 {* Totals *}
 {DASHES}{LF}
 Totaal {displayPrice currency=$entity->id_currency price=$entity->total_paid_tax_incl}{LF}
-Btw: {$entity->tax_rate} {LF}
+{foreach $taxBreakdown as $rate => $breakdown}
+Btw {round($rate, 2)}%: {displayPrice currency=$entity->id_currency price=$breakdown.total_amount}{LF}
+{/foreach}
 
 {* Payment Section *}
-{$entity->payment}{LF}
-{date('H:i d/m/Y')} Kassa 1 {LF}
-{$entity->invoice_number}{LF} / {$entity->reference}{LF} {$entity->invoice_date}{LF}  
+Payment: {$paymentMethod.name}{LF}
+{dateFormat date=$entity->date_add|trim} {$workstation.name}{LF}
 {DASHES}{LF}
 
 {* Footer Section *}

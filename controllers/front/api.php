@@ -321,7 +321,6 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
                 $factory,
                 $this->getOrderProcess($token),
                 Tools::parseNumber($this->getParameter('amount', $body)),
-                $this->getWorkstation($factory, $token),
             );
         }
 
@@ -333,7 +332,6 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
                 $factory,
                 $this->getOrderProcess($token),
                 Tools::parseNumber($this->getParameter('amount', $body)),
-                $this->getWorkstation($factory, $token),
             );
         }
 
@@ -817,8 +815,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
     private function processPaymentCash(
         Factory $factory,
         OrderProcess $orderProcess,
-        float $amount,
-        Workstation $workstation
+        float $amount
     )
         : InvalidAmountCollectedResponse
         | BadRequestResponse
@@ -846,8 +843,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             $orderProcess,
             $paymentMethod,
             $amount,
-            [],
-            $workstation
+            []
         );
         return new OrderProcessResponse($orderProcess);
     }
@@ -856,7 +852,6 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
      * @param Factory $factory
      * @param OrderProcess $orderProcess
      * @param float $amount
-     * @param Workstation $workstation
      *
      * @return InvalidAmountCollectedResponse|BadRequestResponse
      *
@@ -865,8 +860,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
     private function processPaymentCardOffline(
         Factory $factory,
         OrderProcess $orderProcess,
-        float $amount,
-        Workstation $workstation
+        float $amount
     ) : InvalidAmountCollectedResponse
        | BadRequestResponse
        | OrderProcessResponse
@@ -893,8 +887,7 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             $orderProcess,
             $paymentMethod,
             $amount,
-            [],
-            $workstation
+            []
         );
         return new OrderProcessResponse($orderProcess);
     }

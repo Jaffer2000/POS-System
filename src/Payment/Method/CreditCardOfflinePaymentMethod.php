@@ -30,4 +30,12 @@ class CreditCardOfflinePaymentMethod implements PaymentMethod
             'amount' => Tools::roundPrice($orderProcess->getCart()->getOrderTotal()),
         ];
     }
+
+    /**
+     * @return string
+     */
+    public function getName(): string
+    {
+        return 'Credit card (offline)';
+    }
 }

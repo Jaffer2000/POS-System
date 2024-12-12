@@ -30,4 +30,13 @@ class CashPaymentMethod implements PaymentMethod
             'amount' => Tools::roundPrice($orderProcess->getCart()->getOrderTotal()),
         ];
     }
+
+    /**
+     * @return string
+     */
+    public function getName(): string
+    {
+        return 'Cash';
+    }
+
 }
