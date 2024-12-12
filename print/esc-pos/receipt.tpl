@@ -28,8 +28,7 @@ Btw {round($rate, 2)}%: {displayPrice currency=$entity->id_currency price=$break
 {* Payment Section *}
 {$paymentMethod.name}{LF}{LF}
 {date('H:i d/m/Y')} {$workstation.name}{LF}
-{$entity->invoice_number} / {$entity->reference} {$entity->invoice_date}{LF}
-{LF}
+{$entity->invoice_number} / {$entity->reference} {dateFormat date=$entity->date_add|trim}{LF}
 {LF}
 {LF}
 
