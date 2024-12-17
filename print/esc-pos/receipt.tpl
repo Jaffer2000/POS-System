@@ -1,6 +1,6 @@
 {strip}
 {INIT}
-{ESC hex="1B7404"}{* Select code page 4 (CP858 with Euro) *}
+{ESC hex="1B7403"} {* Select Windows-1252 (Latin-1) code page *}
 
 {* Header Section *}
 {ESC hex="1B6101"}{* Center alignment *}
@@ -15,15 +15,20 @@ Factuur{LF}
 
 {* Product Details *}
 {foreach $entity->getProducts() as $product}
-{$product.product_quantity} {$product.product_name} {displayPrice currency=$entity->id_currency price=$product.unit_price_tax_excl} {displayPrice currency=$entity->id_currency price=$product.unit_price_tax_incl}{LF}
+{$product.product_quantity|string_format:"%-3s"} 
+{$product.product_name|truncate:25:""|string_format:"%-25s"} 
+{displayPrice currency=$entity->id_currency price=$product.unit_price_tax_excl|string_format:"%10s"} 
+{displayPrice currency=$entity->id_currency price=$product.unit_price_tax_incl|string_format:"%10s"}{LF}
 {/foreach}
 
 {* Totals *}
 {DASHES}{DASHES}{DASHES}{DASHES}{DASHES}{DASHES}{DASHES}{DASHES}{DASHES}{DASHES}{DASHES}{DASHES}{LF}{LF}
-Totaal {displayPrice currency=$entity->id_currency price=$entity->total_paid_tax_incl}{LF}{LF}
+{"Totaal"|string_format:"%-36s"} {displayPrice currency=$entity->id_currency price=$entity->total_paid_tax_incl|string_format:"%10s"}{LF}{LF}
 {foreach $taxBreakdown as $rate => $breakdown}
-Btw {round($rate, 2)}%: {displayPrice currency=$entity->id_currency price=$breakdown.total_amount}{LF}{LF}
+{"Btw %s%%"|sprintf:round($rate, 2)|string_format:"%-37s"}{displayPrice currency=$entity->id_currency price=$breakdown.total_amount|string_format:"%10.2f"}{LF}
 {/foreach}
+
+{LF}
 
 {* Payment Section *}
 {$paymentMethod.name}{LF}{LF}
@@ -35,9 +40,6 @@ Btw {round($rate, 2)}%: {displayPrice currency=$entity->id_currency price=$break
 {* Footer Section *}
 {ESC hex="1B6101"}{* Center alignment *}
 Bedankt voor uw aankoop!{LF}
-{LF}
-Niet blij met uw aankoop?{LF}
-Retourneren binnen 60 dagen met bon.{LF}
 
 {ESC hex="1B6100"}{* Reset to left alignment *}
 
