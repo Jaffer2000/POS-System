@@ -17,15 +17,15 @@ Factuur{LF}
 {foreach $entity->getProducts() as $product}
 {$product.product_quantity|string_format:"%-3s"} 
 {$product.product_name|truncate:25:""|string_format:"%-25s"} 
-{displayPrice currency=$entity->id_currency price=$product.unit_price_tax_excl|string_format:"%10s"} 
-{displayPrice currency=$entity->id_currency price=$product.unit_price_tax_incl|string_format:"%10s"}{LF}
+{round($product.unit_price_tax_excl, 2)|string_format:"%10.2f"} 
+{round($product.unit_price_tax_incl, 2)|string_format:"%10.2f"}{LF}
 {/foreach}
 
 {* Totals *}
 {DASHES}{DASHES}{DASHES}{DASHES}{DASHES}{DASHES}{DASHES}{DASHES}{DASHES}{DASHES}{DASHES}{DASHES}{LF}{LF}
-{"Totaal"|string_format:"%-36s"} {displayPrice currency=$entity->id_currency price=$entity->total_paid_tax_incl|string_format:"%10s"}{LF}{LF}
+{"Totaal"|string_format:"%-37s"} {round($entity->total_paid_tax_incl, 2)|string_format:"%10.2f"}{LF}{LF}
 {foreach $taxBreakdown as $rate => $breakdown}
-{"Btw %s%%"|sprintf:round($rate, 2)|string_format:"%-37s"}{displayPrice currency=$entity->id_currency price=$breakdown.total_amount|string_format:"%10.2f"}{LF}
+{"Btw %s%%"|sprintf:round($rate, 2)|string_format:"%-37s"} {round($breakdown.total_amount, 2)|string_format:"%10.2f"}{LF}
 {/foreach}
 
 {LF}
