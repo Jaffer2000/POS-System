@@ -33,7 +33,7 @@ Factuur{LF}
 {* Payment Section *}
 {$paymentMethod.name}{LF}{LF}
 {date('H:i d/m/Y')} {$workstation.name}{LF}
-{$entity->invoice_number} / {$entity->reference} {dateFormat date=$entity->date_add|trim}{LF}
+{$entity->invoice_number} / {$entity->reference} {date('d/m/Y', strtotime($entity->date_add))}{LF}
 {LF}
 {LF}
 
