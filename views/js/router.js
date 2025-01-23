@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
-import OrderOverview from "./components/OrderOverview.vue";
-import OrderDetails from "./components/OrderDetails.vue";
-import ClientOverview from "./components/ClientOverview.vue";
+import OrderOverview from "./vue/OrderOverview.vue";
+import OrderDetails from "./vue/OrderDetails.vue";
+import ClientOverview from "./vue/ClientOverview.vue";
 
 const routes = [
   {
