@@ -1,6 +1,6 @@
 <?php
 
-use Thirtybees\Core\DependencyInjection\ServiceLocatorCore;
+use Thirtybees\Core\DependencyInjection\ServiceLocator;
 use Thirtybees\Core\Error\ErrorUtils;
 use Thirtybees\Module\POS\Api\Response\AccessDeniedResponse;
 use Thirtybees\Module\POS\Api\Response\BadRequestResponse;
@@ -84,9 +84,9 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
             $response = $this->processRequest($factory);
         } catch (Throwable $e) {
             $desc = ErrorUtils::describeException($e);
-            ServiceLocatorCore::getInstance()->getErrorHandler()->logFatalError($desc);
+            ServiceLocator::getInstance()->getErrorHandler()->logFatalError($desc);
             if (_PS_MODE_DEV_) {
-            $message = $desc->getExtendedMessage();
+                $message = $desc->getExtendedMessage();
             } else {
                 $message = "Internal server error";
             }
