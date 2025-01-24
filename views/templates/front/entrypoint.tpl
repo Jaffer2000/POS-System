@@ -4,16 +4,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TBPOS</title>
-    <!-- Include the CSS -->
-    <link rel="stylesheet" href="{$tbpos_css}" />
+    <title>{l s='POS system' mod='tbpos'}</title>
+    {foreach $cssFiles as $css}
+    <link rel="stylesheet" href="{$css}" />
+    {/foreach}
+    {foreach $jsFiles as $js}
+    <script src="{$js}"></script>
+    {/foreach}
   </head>
   <body>
-    <!-- Mount Vue.js App -->
     <div id="app"></div>
 
-    <!-- Include JavaScript files -->
-    <script src="{$tbpos_js}"></script>
-    <script src="{$tbpos_router}"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        startPOS(document.getElementById("app"), {
+          apiBaseUrl: "{$apiUrl}",
+          translations: {$translations|json_encode}
+        });
+      });
+    </script>
   </body>
 </html>

@@ -33,7 +33,7 @@ class TbPOS extends PaymentModule
         $this->version = '0.0.1';
         $this->author = 'thirty bees';
         $this->need_instance = false;
-        $this->controllers = ['api'];
+        $this->controllers = ['api', 'entrypoint'];
 
         $this->bootstrap = true;
         parent::__construct();
@@ -235,7 +235,17 @@ class TbPOS extends PaymentModule
     public function hookModuleRoutes()
     {
         return [
-            'wms' => [
+            'module-tbpos-entrypoint' => [
+                'controller' => 'entrypoint',
+                'rule' => 'pos',
+                'keywords' => [],
+                'params' => [
+                    'fc' => 'module',
+                    'module' => $this->name,
+                    'controller' => 'entrypoint'
+                ]
+            ],
+            'module-tbpos-api' => [
                 'controller' => 'api',
                 'rule' => 'pos/api/{:apiUrl}',
                 'keywords' => [
