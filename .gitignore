@@ -5,3 +5,4 @@ config.xml
 .DS_Store
 vendor
 node_modules
+front/dist

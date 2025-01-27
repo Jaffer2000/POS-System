@@ -4,8 +4,8 @@ const path = require("path");
 
 // Paths for source and destination files
 const distDir = path.join(__dirname, "dist/js");
-const appOutput = path.join(__dirname, "./views/js/app/app.js");
-const vendorOutput = path.join(__dirname, "./views/js/app/vendor.js");
+const appOutput = path.join(__dirname, "/../views/js/app/app.js");
+const vendorOutput = path.join(__dirname, "/../views/js/app/vendor.js");
 
 // Ensure destination directories exist
 fs.ensureDirSync(path.dirname(appOutput));
