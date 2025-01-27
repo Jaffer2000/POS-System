@@ -26,7 +26,7 @@ exec("npm run build", (error, stdout, stderr) => {
   // Move app.js and vendor.js to the destination
   console.log("Moving build artifacts...");
   const appSource = path.join(distDir, "app.js");
-  const vendorSource = path.join(distDir, "vendor.js");
+  const vendorSource = path.join(distDir, "chunk-vendors.js");
 
   try {
     if (fs.existsSync(appSource)) {
