@@ -5,7 +5,7 @@ const path = require("path");
 // Paths for source and destination files
 const distDir = path.join(__dirname, "dist/js");
 const appOutput = path.join(__dirname, "/../views/js/app/app.js");
-const vendorOutput = path.join(__dirname, "/../views/js/app/vendor.js");
+const vendorOutput = path.join(__dirname, "/../views/js/app/chunk-vendors.js");
 
 // Ensure destination directories exist
 fs.ensureDirSync(path.dirname(appOutput));
@@ -38,9 +38,9 @@ exec("npm run build", (error, stdout, stderr) => {
 
     if (fs.existsSync(vendorSource)) {
       fs.copySync(vendorSource, vendorOutput);
-      console.log(`vendor.js moved to ${vendorOutput}`);
+      console.log(`chunk-vendors.js moved to ${vendorOutput}`);
     } else {
-      console.error("vendor.js not found in dist folder.");
+      console.error("chunk-vendors.js not found in dist folder.");
     }
   } catch (err) {
     console.error(`Error moving files: ${err.message}`);
