@@ -29,7 +29,7 @@ class TbPosEntryPointModuleFrontController extends ModuleFrontController
             ],
             'jsFiles' => [
                 $this->module->getPathUri() . 'views/js/app/app.js',
-                $this->module->getPathUri() . 'views/js/app/vendor.js',
+                $this->module->getPathUri() . 'views/js/app/chunk-vendors.js',
                 $this->module->getPathUri() . 'views/js/bootstrap.bundle.min.js',
             ],
             'translations' => $this->getTranslations(),

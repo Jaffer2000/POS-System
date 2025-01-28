@@ -4,12 +4,10 @@ const path = require("path");
 
 // Paths for source and destination files
 const distDir = path.join(__dirname, "dist/js");
-const appOutput = path.join(__dirname, "/../views/js/app/app.js");
-const vendorOutput = path.join(__dirname, "/../views/js/app/chunk-vendors.js");
+const viewsDir = path.join(__dirname, "/../views/js/app");
 
 // Ensure destination directories exist
-fs.ensureDirSync(path.dirname(appOutput));
-fs.ensureDirSync(path.dirname(vendorOutput));
+fs.ensureDirSync(viewsDir);
 
 // Run the build command
 console.log("Running npm build...");
@@ -23,26 +21,28 @@ exec("npm run build", (error, stdout, stderr) => {
   }
   console.log(stdout);
 
-  // Move app.js and vendor.js to the destination
+  // Files to move
+  const filesToMove = [
+    "app.js",
+    "app.js.map",
+    "chunk-vendors.js",
+    "chunk-vendors.js.map",
+  ];
+
   console.log("Moving build artifacts...");
-  const appSource = path.join(distDir, "app.js");
-  const vendorSource = path.join(distDir, "chunk-vendors.js");
+  filesToMove.forEach((file) => {
+    const sourcePath = path.join(distDir, file);
+    const destPath = path.join(viewsDir, file);
 
-  try {
-    if (fs.existsSync(appSource)) {
-      fs.copySync(appSource, appOutput);
-      console.log(`app.js moved to ${appOutput}`);
-    } else {
-      console.error("app.js not found in dist folder.");
+    try {
+      if (fs.existsSync(sourcePath)) {
+        fs.copySync(sourcePath, destPath);
+        console.log(`${file} moved to ${destPath}`);
+      } else {
+        console.error(`${file} not found in dist folder.`);
+      }
+    } catch (err) {
+      console.error(`Error moving ${file}: ${err.message}`);
     }
-
-    if (fs.existsSync(vendorSource)) {
-      fs.copySync(vendorSource, vendorOutput);
-      console.log(`chunk-vendors.js moved to ${vendorOutput}`);
-    } else {
-      console.error("chunk-vendors.js not found in dist folder.");
-    }
-  } catch (err) {
-    console.error(`Error moving files: ${err.message}`);
-  }
+  });
 });
