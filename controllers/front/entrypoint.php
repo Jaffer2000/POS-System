@@ -24,16 +24,18 @@ class TbPosEntryPointModuleFrontController extends ModuleFrontController
 
         $template->assign([
             'apiUrl' => rtrim($link->getModuleLink('tbpos', 'api', ['apiUrl' => '']), '/'),
-            'cssFiles' => [
-                $this->module->getPathUri() . 'views/css/style.css',
-            ],
             'jsFiles' => [
                 $this->module->getPathUri() . 'views/js/app/app.js',
                 $this->module->getPathUri() . 'views/js/app/chunk-vendors.js',
                 $this->module->getPathUri() . 'views/js/bootstrap.bundle.min.js',
             ],
+            'cssFiles' => [
+                $this->module->getPathUri() . 'views/css/bootstrap.min.css',
+                $this->module->getPathUri() . 'views/css/fontawesome.min.css',
+                $this->module->getPathUri() . 'views/css/style.css',
+            ],
             'translations' => $this->getTranslations(),
-        ]);
+        ]);        
 
         die($template->fetch());
     }
@@ -49,7 +51,7 @@ class TbPosEntryPointModuleFrontController extends ModuleFrontController
             'invalidDiscount' =>  $this->l('Invalid discount amount entered. Please check your input and try again.'),
             'paymentWarning' =>  $this->l('Please select a payment method.'),
             'paymentConfirmation' => $this->l('Was the payment processed successfully?'),
-            'receiptConfirmation' => $this->l('Would you like a voucher?'),
+            'receiptConfirmation' => $this->l('Would you like a receipt?'),
             'loginFailed' => $this->l('Login failed. Please check your login credentials.'),
         ];
     }
