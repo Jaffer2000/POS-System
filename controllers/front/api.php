@@ -4,6 +4,7 @@ use Thirtybees\Core\DependencyInjection\ServiceLocator;
 use Thirtybees\Core\Error\ErrorUtils;
 use Thirtybees\Module\POS\Api\Response\AccessDeniedResponse;
 use Thirtybees\Module\POS\Api\Response\BadRequestResponse;
+use Thirtybees\Module\POS\Api\Response\ClientListResponse;
 use Thirtybees\Module\POS\Api\Response\ForbiddenResponse;
 use Thirtybees\Module\POS\Api\Response\GetSkuListResponse;
 use Thirtybees\Module\POS\Api\Response\GetWorkstationListResponse;
@@ -206,6 +207,17 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
                 $this->getParameter('searchterm', $_GET, false, ''),
                 (int)$this->getParameter('page', $_GET, false, 1),
                 (int)$this->getParameter('per_page', $_GET, false, 8)
+            );
+        }
+
+        if ($url === 'clients') {
+            $this->ensureMethod(static::METHOD_GET);
+            $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER]);
+            return $this->processListClients(
+                $factory,
+                $this->getParameter('searchterm', $_GET, false, ''),
+                (int)$this->getParameter('page', $_GET, false, 1),
+                (int)$this->getParameter('per_page', $_GET, false, 5)
             );
         }
 
@@ -1220,6 +1232,61 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
 
         return new OrderListResponse(
             $orders,
+            $page,
+            $pageSize,
+            $total,
+            $search
+        );
+    }
+
+    /**
+     * @param Factory $factory
+     * @param string $search
+     * @param int $page
+     * @param int $pageSize
+     *
+     * @return ClientListResponse
+     *
+     * @throws PrestaShopException
+     */
+    private function processListClients(
+        Factory $factory,
+        string $search,
+        int $page,
+        int $pageSize
+    ) : ClientListResponse
+    {
+        $pageSize = min(max(1, (int)$pageSize), 100);
+        $page = max(1, (int)$page);
+        $sql = (new DbQuery())
+            ->select('c.*')
+            ->from('customer', 'c')
+            ->limit($pageSize, ($page - 1) * $pageSize)
+            ->orderBy('c.id_customer');
+
+        $totalSql = (new DbQuery())
+            ->select('COUNT(1) AS cnt')
+            ->from('customer', 'c');
+
+        $search = trim((string)$search);
+        if ($search !== '') {
+            $where = [
+                'CONCAT(c.firstname, " ", c.lastname) LIKE \'%' . pSQL($search) . '%\'',
+                'c.email LIKE \'%' . pSQL($search) . '%\'',
+            ];
+            $sql->where(implode(' OR ', $where));
+            $totalSql->where(implode(' OR ', $where));
+        }
+
+        $conn = Db::readOnly();
+
+        $results = $conn->getArray($sql);
+        $customers = ObjectModel::hydrateCollection(Customer::class, $results, Context::getContext()->language->id);
+
+        $total = $conn->getValue($totalSql);
+
+        return new ClientListResponse(
+            $customers,
             $page,
             $pageSize,
             $total,
