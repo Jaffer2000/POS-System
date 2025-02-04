@@ -23,6 +23,7 @@ use Thirtybees\Module\POS\Api\Response\SkuResponse;
 use Thirtybees\Module\POS\Api\Response\UserResponse;
 use Thirtybees\Module\POS\Auth\Model\Role;
 use Thirtybees\Module\POS\Auth\Model\Token;
+use Thirtybees\Module\POS\Customer\Service\CustomerService;
 use Thirtybees\Module\POS\DependencyInjection\Factory;
 use Thirtybees\Module\POS\Exception\AccessDeniedException;
 use Thirtybees\Module\POS\Exception\ForbiddenException;
@@ -278,6 +279,18 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
                 $this->getOrderProcess($token),
                 (string)$this->getParameter('refcode', $body),
                 (int)$this->getParameter('quantity', $body)
+            );
+        }
+
+        if ($url === 'orders/assign-client') {
+            $this->ensureMethod(static::METHOD_POST);
+            $token = $this->ensureAccess([ Role::ROLE_ADMIN, Role::ROLE_CASHIER ]);
+            $body = $this->getBody();
+            return $this->processAssignClient(
+                $factory,
+                $this->getOrderProcess($token),
+                $this->getWorkstation($factory, $token),
+                (int)$this->getParameter('client_id', $body),
             );
         }
 
@@ -1329,6 +1342,35 @@ class TbPOSApiModuleFrontController extends ModuleFrontController
         } catch (NotFoundException $e) {
             throw new ServerErrorException("Failed to find workstation for token", 0, $e);
         }
+    }
+
+    /**
+     * @param Factory $factory
+     * @param OrderProcess $orderProcess
+     * @param Workstation $workstation
+     * @param int $customerId
+     *
+     * @return OrderProcessResponse
+     * @throws PrestaShopException
+     */
+    private function processAssignClient(
+        Factory $factory,
+        OrderProcess $orderProcess,
+        Workstation $workstation,
+        int $customerId
+    ): OrderProcessResponse
+    {
+        $customer = new Customer($customerId);
+        $customerService = $factory->getCustomerService();
+        if (! Validate::isLoadedObject($customer)) {
+            $customer = $customerService->getCustomerForWorkstation($workstation);
+        } else {
+            $customer = $customerService->findCustomer($customerId);
+        }
+        if ($customer) {
+            $factory->getOrderProcessService()->assignClient($customer, $orderProcess);
+        }
+        return new OrderProcessResponse($orderProcess);
     }
 
 }

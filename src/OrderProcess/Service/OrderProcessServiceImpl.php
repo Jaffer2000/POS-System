@@ -6,6 +6,7 @@ use Address;
 use Cart;
 use Configuration;
 use Context;
+use Customer;
 use Db;
 use DbQuery;
 use Order;
@@ -332,4 +333,31 @@ class OrderProcessServiceImpl implements OrderProcessService
             $workstation
         );
     }
+
+    /**
+     * @param Customer $customer
+     * @param OrderProcess $orderProcess
+     * @return OrderProcess
+     * @throws PrestaShopException
+     */
+    public function assignClient(Customer $customer, OrderProcess $orderProcess): OrderProcess
+    {
+        $context = Context::getContext();
+        $context->customer = $customer;
+
+        $cart = $context->cart;
+        $cart->id_customer = (int)$customer->id;
+        $cart->setNoMultishipping();
+        $oldDeliveryAddress = (int)$cart->id_address_delivery;
+        $cart->id_address_delivery = (int)Address::getFirstCustomerAddressId($customer->id);
+        $cart->id_address_invoice = (int)Address::getFirstCustomerAddressId($customer->id);
+        if ($oldDeliveryAddress != $cart->id_address_delivery) {
+            $cart->updateAddressId((int)$oldDeliveryAddress, (int)$cart->id_address_delivery);
+        }
+        $cart->update();
+
+        return $orderProcess;
+    }
+
+
 }

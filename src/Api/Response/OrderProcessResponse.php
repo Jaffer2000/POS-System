@@ -3,6 +3,7 @@
 namespace Thirtybees\Module\POS\Api\Response;
 
 use Cart;
+use Customer;
 use Order;
 use PrestaShopException;
 use Product;
@@ -46,11 +47,11 @@ class OrderProcessResponse extends JSendSuccessResponse
 
         switch ($status) {
             case OrderProcess::STATUS_ACTIVE:
-                $data = $this->addCartData($data, $this->orderProcess->getCart());
+                $data = $this->addCartData($factory, $data, $this->orderProcess->getCart());
                 $data = $this->addPaymentMethods($factory, $data);
                 return $data;
             case OrderProcess::STATUS_PROCESSING_PAYMENT:
-                $data = $this->addCartData($data, $this->orderProcess->getCart());
+                $data = $this->addCartData($factory, $data, $this->orderProcess->getCart());
                 $data = $this->addProcessingPaymentData($data);
                 return $data;
             case OrderProcess::STATUS_CANCELED:
@@ -59,7 +60,7 @@ class OrderProcessResponse extends JSendSuccessResponse
                 $data = $this->addOrderData($factory, $data, $this->orderProcess->getOrder());
                 return $data;
             case OrderProcess::STATUS_PAYMENT_FAILED:
-                $data = $this->addCartData($data, $this->orderProcess->getCart());
+                $data = $this->addCartData($factory, $data, $this->orderProcess->getCart());
                 $data = $this->addPaymentMethods($factory, $data);
                 return $data;
             default:
@@ -68,6 +69,7 @@ class OrderProcessResponse extends JSendSuccessResponse
     }
 
     /**
+     * @param Factory $factory
      * @param array $data
      * @param Cart $cart
      *
@@ -75,7 +77,7 @@ class OrderProcessResponse extends JSendSuccessResponse
      *
      * @throws PrestaShopException
      */
-    private function addCartData(array $data, Cart $cart): array
+    private function addCartData(Factory $factory, array $data, Cart $cart): array
     {
         $subtotal = Tools::roundPrice($cart->getOrderTotal(true, Cart::ONLY_PRODUCTS_WITHOUT_SHIPPING));
         $total = Tools::roundPrice($cart->getOrderTotal(true));
@@ -115,7 +117,8 @@ class OrderProcessResponse extends JSendSuccessResponse
             'lines' => $lines,
             'discounts' => $discounts
         ];
-        return $data;
+
+        return $this->addClientData($factory, $cart, $data);
     }
 
     /**
@@ -163,5 +166,18 @@ class OrderProcessResponse extends JSendSuccessResponse
         return $data;
     }
 
+    /**
+     * @param Factory $factory
+     * @param Cart $cart
+     * @param array $data
+     * @return array
+     * @throws PrestaShopException
+     */
+    private function addClientData(Factory $factory, Cart $cart, array $data)
+    {
+        $clientResponse = new ClientResponse(new Customer($cart->id_customer));
+        $data['client'] = $clientResponse->getData($factory);
+        return $data;
+    }
 
 }

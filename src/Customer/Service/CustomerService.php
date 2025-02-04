@@ -14,4 +14,10 @@ interface CustomerService
      */
     public function getCustomerForWorkstation(Workstation $workstation): CoreCustomer;
 
+    /**
+     * @param int $customerId
+     * @return CoreCustomer|null
+     */
+    public function findCustomer(int $customerId): ?CoreCustomer;
+
 }

@@ -2,6 +2,7 @@
 
 namespace Thirtybees\Module\POS\OrderProcess\Service;
 
+use Customer;
 use Order;
 use PrestaShopException;
 use Thirtybees\Module\POS\Auth\Model\Token;
@@ -73,4 +74,11 @@ interface OrderProcessService
      * @throws PrestaShopException
      */
     public function findForOrder(Order $order): ?OrderProcess;
+
+    /**
+     * @param Customer $customer
+     * @param OrderProcess $orderProcess
+     * @return OrderProcess
+     */
+    public function assignClient(Customer $customer, OrderProcess $orderProcess): OrderProcess;
 }
