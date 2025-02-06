@@ -8,7 +8,9 @@
           </router-link>
         </li>
         <li>
-          <a href="#"><i class="fas fa-users"></i><span>Klanten</span></a>
+          <router-link to="/klanten"
+            ><i class="fas fa-users"></i><span>Klanten</span>
+          </router-link>
         </li>
         <li>
           <router-link to="/bestellingen">

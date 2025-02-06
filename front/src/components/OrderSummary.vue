@@ -116,7 +116,11 @@
           <div class="user-icon">
             <i class="fas fa-user"></i>
           </div>
-          Klant
+          {{
+            selectedClient
+              ? `${selectedClient.firstname} ${selectedClient.lastname}`
+              : "Klant selecteren"
+          }}
         </button>
       </div>
 
@@ -313,6 +317,7 @@ export default {
     };
   },
   props: {
+    selectedClient: Object,
     orderItems: {
       type: Array,
       required: true,
@@ -710,6 +715,7 @@ export default {
       // Delay clearing the UI state for orderItems by 3 seconds
       setTimeout(() => {
         this.$emit("clear-order-items");
+        this.$emit("clear-selected-client");
       }, 3000);
     },
     async printReceipt() {

@@ -160,7 +160,7 @@ export default {
   },
   mounted() {
     this.focusInterval = setInterval(this.maintainFocus, 100);
-    this.debouncedOnBarcodeInput = this.debounce(this.onBarcodeInput, 100);
+    this.debouncedOnBarcodeInput = this.debounce(this.onBarcodeInput, 50);
   },
   beforeUnmount() {
     clearInterval(this.focusInterval);

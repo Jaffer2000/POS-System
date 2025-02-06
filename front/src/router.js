@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from "vue-router";
 import OrderOverview from "./components/OrderOverview.vue";
 import OrderDetails from "./components/OrderDetails.vue";
+import ClientOverview from "./components/ClientOverview.vue";
 
 const routes = [
   {
@@ -18,6 +19,11 @@ const routes = [
     name: "OrderDetails",
     component: OrderDetails,
     props: true,
+  },
+  {
+    path: "/klanten",
+    name: "Klanten",
+    component: ClientOverview,
   },
 ];
 

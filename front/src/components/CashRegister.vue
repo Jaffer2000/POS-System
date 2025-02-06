@@ -5,10 +5,12 @@
       :orderItems="orderItems"
       :translations="translations"
       :token="token"
+      :selectedClient="selectedClient"
       @remove-item="removeProductFromOrder"
       @update-quantity="updateItemQuantity"
       @set-quantity="setItemQuantity"
       @clear-order-items="forwardClearOrderItems"
+      @clear-selected-client="forwardClearSelectedClient"
       @modal-state-change="forwardModalStateChange"
     />
   </div>
@@ -22,6 +24,7 @@ export default {
     OrderSummary,
   },
   props: {
+    selectedClient: Object,
     orderItems: {
       type: Array,
       required: true,
@@ -51,6 +54,9 @@ export default {
     },
     forwardClearOrderItems() {
       this.$emit("clear-order-items");
+    },
+    forwardClearSelectedClient() {
+      this.$emit("clear-selected-client"); // Forward event to parent
     },
     forwardModalStateChange(state) {
       this.$emit("modal-state-change", state);

@@ -28,6 +28,7 @@
               :translations="translations"
               :token="token"
               @focus-state-change="updateFocusState"
+              @client-selected="handleClientSelection"
             />
           </div>
           <div class="col-5">
@@ -36,10 +37,12 @@
               :orderItems="orderItems"
               :translations="translations"
               :token="token"
+              :selectedClient="selectedClient"
               @remove-item="removeProductFromOrder"
               @update-quantity="updateItemQuantity"
               @set-quantity="setItemQuantity"
               @clear-order-items="clearOrderItems"
+              @clear-selected-client="selectedClient = null"
               @modal-state-change="updateModalState"
             />
           </div>
@@ -96,6 +99,7 @@ export default {
       inactivityTimeout: null,
       tokenExpirationTime: null, // Timestamp when the token will expire
       tokenExchangeTimeout: null,
+      selectedClient: null,
     };
   },
   methods: {
@@ -268,9 +272,6 @@ export default {
           item.quantity = newQuantity;
 
           console.log("Updated order summary:", response.data);
-
-          // Optional: Recalculate total price if necessary
-          this.updateTotalPrice();
         } catch (error) {
           if (error.response && error.response.status === 422) {
             this.$refs.errorPopup.showPopup(this.translations.outOfStock);
@@ -343,6 +344,9 @@ export default {
     },
     updateFocusState(isFocused) {
       this.disableFocus = isFocused;
+    },
+    handleClientSelection(client) {
+      this.selectedClient = client;
     },
     logout() {
       // Remove the token and workstation from localStorage

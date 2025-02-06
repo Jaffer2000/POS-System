@@ -1,6 +1,6 @@
 <template>
   <div class="order-overview-container">
-    <h2>Bestellingen</h2>
+    <h2 class="order-title">Bestellingen</h2>
 
     <!-- Search Bar -->
     <div class="search-bar-order-overview mb-3">
