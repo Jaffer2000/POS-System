@@ -6,4 +6,4 @@ config.xml
 vendor
 node_modules
 front/dist
-front/public/index.html
+front/public
